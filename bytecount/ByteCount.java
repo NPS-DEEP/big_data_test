@@ -1,8 +1,48 @@
 // based loosely on https://hadoop.apache.org/docs/r2.7.2/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html
 // and Hadoop 4'th ed. p. 24, p. 229.
 
-public class ByteCount extends org.apache.hadoop.conf.Configured
-                       implements org.apache.hadoop.conf.Tool {
+import java.io.IOException;
+
+//public class ByteCount extends org.apache.hadoop.conf.Configured
+//                       implements org.apache.hadoop.util.Tool {
+public class ByteCount {
+
+  // ************************************************************
+  // SplitInfoWritable containing the split path, start, and length
+  // A Writable containing split metadata available for diagnostics.
+  // ************************************************************
+  static class SplitInfoWritable implements org.apache.hadoop.io.Writable {
+
+    private String path;
+    private long start;
+    private long length;
+
+    public SplitInfoWritable(String _path, long _start, long _length) {
+      path = _path;
+      start = _start;
+      length = _length;
+    }
+
+    public void write(java.io.DataOutput out) throws IOException {
+      out.writeUTF(path);
+      out.writeLong(start);
+      out.writeLong(length);
+    }
+
+    public void readFields(java.io.DataInput in) throws IOException {
+      path = in.readUTF();
+      start = in.readLong();
+      length = in.readLong();
+    }
+
+    public static SplitInfoWritable read(java.io.DataInput in)
+                                                     throws IOException {
+
+      SplitInfoWritable w = new SplitInfoWritable("",0,0);
+      w.readFields(in);
+      return w;
+    }
+  }
 
   // ************************************************************
   // SplitFileReacordReader reads the requested split.
@@ -10,92 +50,100 @@ public class ByteCount extends org.apache.hadoop.conf.Configured
   // this split.
   // ref. https://github.com/apache/mahout/blob/master/integration/src/main/java/org/apache/mahout/text/wikipedia/XmlInputFormat.java
   // ************************************************************
-  static SplitFileRecordReader extends RecordReader<
-                           SplitInfoWritable,
-                           org.apache.hadoop.io.BytesWritable> {
+  static class SplitFileRecordReader
+                            extends org.apache.hadoop.mapreduce.RecordReader<
+                                 SplitInfoWritable,
+                                 org.apache.hadoop.io.BytesWritable> {
 
+    private org.apache.hadoop.fs.FSDataInputStream in;
     private SplitInfoWritable currentKey;
     private org.apache.hadoop.io.BytesWritable currentValue =
                                  new org.apache.hadoop.io.BytesWritable();
-    private org.apache.hadoop.fs.FSDataInputStream in;
     private boolean isDone = false;
 
-    @override
+
+    @Override
     public void initialize(
-                 org.apache.hadoop.mapred.InputSplit inputSplit,
-                 org.apache.hadoop.mapred.TaskAttemptContext context)
+                 org.apache.hadoop.mapreduce.InputSplit inputSplit,
+                 org.apache.hadoop.mapreduce.TaskAttemptContext context)
                         throws IOException, InterruptedException {
 
-      // open the input file
-      final long start = inputSplit.getStart();
-      final long end = inputSplit.getEnd();
-      final org.apache.hadoop.fs.Path path = inputSplit.getPath();
+      // get InputSplit in terms of FileSplit
+      final org.apache.hadoop.mapreduce.lib.input.FileSplit fileSplit =
+                 (org.apache.hadoop.mapreduce.lib.input.FileSplit)inputSplit;
+
+      // open the input file and seek to the split
+      final long start = fileSplit.getStart();
+      final long length = fileSplit.getLength();
+      final org.apache.hadoop.fs.Path path = fileSplit.getPath();
+      final org.apache.hadoop.conf.Configuration configuration =
+                                              context.getConfiguration();
       final org.apache.hadoop.fs.FileSystem fileSystem =
-                   path.getFileSystem(configuration
-zzzz
+                                       path.getFileSystem(configuration);
+      in = fileSystem.open(path);
+      in.seek(start);
 
-                     inputSplit.getFileSystem();
-
-      org.apache.hadoop.mapred.FileSplit fileSplit =
-                       (org.apache.hadoop.mapred.FileSplit)inputSplit;
-
-
-
-
-    }
-
-    @override
-    public boolean nextKeyValue() throws IOException, InterruptedException {
-
-      // key
-      key = new SplitInfoWritable(fileSplit.getPath().toString(), // path
+      // set key so diagnostics can have metadata about the split
+      currentKey = new SplitInfoWritable(
+                                  fileSplit.getPath().toString(), // path
                                   fileSplit.getStart(),           // start
                                   fileSplit.getLength());         // length
 
-      // value
-      byte[] contents = new byte[(int)fileSplit.getLength()];
-      Path file = fileSplit.getPath();
-      org.apache.hadoop.fs.FileSystem fs = file.getFileSystem(configuration);
-      org.apache.hadoop.fs.FSDataInputStream in = null;
-      try {
-        in = fs.open(file);
-        org.apache.commons.io.IOUtils.readFully(
-                                          in, contents, 0, contents.length);
-        value.set(contents, 0, contents.length);
-      } finally {
-        org.apache.commons.io.IOUtils.closeStream(in);
+      // although the value can be read during initialize(), save it
+      // for nextKeyValue().
+    }
+
+    @Override
+    public boolean nextKeyValue() throws IOException, InterruptedException {
+
+      // Unlike most readers which return parts of the split as keyed
+      // structures, SplitFileRecordReader reads and returns the entire
+      // split in one giant BytesWritable value.
+      if (isDone == true) {
+        return false;
       }
+
+      // key
+      // currentKey is aready set
+
+      // value
+      byte[] contents = new byte[(int)currentKey.length];
+      org.apache.hadoop.io.IOUtils.readFully(in, contents, 0, contents.length);
+      currentValue.set(contents, 0, contents.length);
+
+      // done
       isDone = true;
       return true;
     }
 
-    @override
+    @Override
     public SplitInfoWritable getCurrentKey()
                                   throws IOException, InterruptedException {
-      return key;
+      return currentKey;
     }
 
-    @override
+    @Override
     public org.apache.hadoop.io.BytesWritable getCurrentValue()
                                   throws IOException, InterruptedException {
-      return value;
+      return currentValue;
     }
 
-    @override
+    @Override
     public float getProgress() throws IOException {
       return isDone ? 1.0f : 0.0f;
     }
 
-    @override
-    public float close() throws IOException {
-      // no resources to close
+    @Override
+    public void close() throws IOException {
+      if (in != null) {
+        org.apache.hadoop.io.IOUtils.closeStream(in);
+      }
     }
   }
 
   // ************************************************************
   // SplitFileInputFormat provides createRecordReader which returns
-  // SplitFileRecordReader which returns one split given mapred.FileSplit
-  // information.
+  // SplitFileRecordReader for one split.
   // ************************************************************
   static class SplitFileInputFormat
         extends org.apache.hadoop.mapreduce.lib.input.FileInputFormat<
@@ -103,13 +151,13 @@ zzzz
                          org.apache.hadoop.io.BytesWritable> {
 
     // createRecordReader returns SplitFileRecordReader
-    @override
-    public org.apache.hadoop.mapred.RecordReader<
+    @Override
+    public org.apache.hadoop.mapreduce.RecordReader<
                          SplitInfoWritable,
                          org.apache.hadoop.io.BytesWritable>
            createRecordReader(
-                 org.apache.hadoop.mapred.InputSplit split,
-                 org.apache.hadoop.mapred.TaskAttemptContext context)
+                 org.apache.hadoop.mapreduce.InputSplit split,
+                 org.apache.hadoop.mapreduce.TaskAttemptContext context)
                        throws IOException, InterruptedException {
 
       SplitFileRecordReader reader = new SplitFileRecordReader();
@@ -119,36 +167,42 @@ zzzz
   }
 
   // ************************************************************
-  // SplitInfoWritable containing the split path, start, and length
+  // ByteHistogramWritable containing a histogram distribution of bytes.
   // ************************************************************
-  static class SplitInfoWritable implements org.apache.hadoop.io.Writable {
+  static class ByteHistogramWritable implements org.apache.hadoop.io.Writable {
 
-    private String path;
-    private int start;
-    private int length;
+    public long[] byteHistogram = new long[256];
 
-    public SplitInfoWritable(String _path, int _start, int _length) {
-      path = _path;
-      start = _start;
-      length = _length;
+    public ByteHistogramWritable() {
+      byteHistogram = new long[256];
     }
 
     public void write(java.io.DataOutput out) throws IOException {
-      out.WriteString(path);
-      out.WriteInt(start);
-      out.WriteInt(length);
+      for (int i=0; i<256; i++) {
+        out.writeLong(byteHistogram[i]);
+      }
     }
 
     public void readFields(java.io.DataInput in) throws IOException {
-      path = in.readString();
-      start = in.readInt();
-      length = in.readInt();
+      for (int i=0; i<256; i++) {
+        byteHistogram[i] = in.readLong();
+      }
     }
 
-    public static SplitInfoWritable read(java.io.DataInput in)
+    public void add(ByteHistogramWritable other) {
+      for (int i = 0; i< byteHistogram.length; i++) {
+        byteHistogram[i] += other.byteHistogram[i];
+      }
+    }
+
+    public String toString() {
+      return java.util.Arrays.toString(byteHistogram);
+    }
+
+    public static ByteHistogramWritable read(java.io.DataInput in)
                                                      throws IOException {
 
-      SplitInfoWritable w = new SplitInfoWritable();
+      ByteHistogramWritable w = new ByteHistogramWritable();
       w.readFields(in);
       return w;
     }
@@ -158,50 +212,98 @@ zzzz
   // SplitMapper
   // ref. p. 230.
   // ref. https://hadoop.apache.org/docs/r2.6.2/api/org/apache/hadoop/mapreduce/Mapper.html
+  //
+  // Currently: take bytes from reader and count them into the bytes histogram.
   // ************************************************************
   static class SplitMapper extends org.apache.hadoop.mapreduce.Mapper<
                        SplitInfoWritable,
                        org.apache.hadoop.io.BytesWritable,
-                       SplitInfoWritable,
-                       org.apache.hadoop.io.Text> {
+                       org.apache.hadoop.io.NullWritable,
+                       ByteHistogramWritable> {
 
-    private SplitInfoWritable splitInfoWritable;
-
-    @override
-    protected void setup(org.apache.hadoop.mapreduce.Mapper.Context context)
+    @Override
+    public void map(SplitInfoWritable key,
+                    org.apache.hadoop.io.BytesWritable value,
+                    org.apache.hadoop.mapreduce.Mapper.Context context)
                                    throws IOException, InterruptedException {
-      Path path = ((org.apache.hadoop.mapreduce.lib.input.FileSplit)
-                                                            split).getPath();
-      splitInfoWritable = new SplitInfoWritable(path.toString(),
-                                                split.getStart(),
-                                                split.getLength());
+
+      // populate a new ByteHistogramWriable from the bytes from the split
+      ByteHistogramWritable byteHistogramWritable = new ByteHistogramWritable();
+      byte[] contents = value.getBytes();
+      for (int i = 0; i< contents.length; i++) {
+        ++byteHistogramWritable.byteHistogram[i];
+      }
+
+      // write the new key, value tuple
+      context.write(org.apache.hadoop.io.NullWritable.get(),
+                    byteHistogramWritable);
     }
-
-    @override
-    protected void map(SplitInfoWritable key, 
-
-
-
+  }
 
   // ************************************************************
-  // Main
+  // SplitReducer
+  // ref. p. 25.
+  //
+  // Currently: take bytes from reader and count them into the bytes histogram.
   // ************************************************************
-  @override
-  public int run(String[] args) throws Exception {
+  static class SplitReducer extends org.apache.hadoop.mapreduce.Reducer<
+                       org.apache.hadoop.io.NullWritable,
+                       ByteHistogramWritable,
+                       org.apache.hadoop.io.NullWritable,
+                       ByteHistogramWritable> {
 
+    public void reduce(org.apache.hadoop.io.NullWritable key,
+                       Iterable<ByteHistogramWritable> values,
+                       org.apache.hadoop.mapreduce.Reducer.Context context)
+                                   throws IOException, InterruptedException {
+
+      // populate a new ByteHistogramWriable from the bytes from the split
+      ByteHistogramWritable byteHistogramWritable = new ByteHistogramWritable();
+
+      // reduce all values as they come back to this single reducer
+      for (ByteHistogramWritable value : values) {
+
+        // add the value array to the histogram
+        byteHistogramWritable.add(value);
+      }
+
+      // write the new key, value tuple
+      context.write(org.apache.hadoop.io.NullWritable.get(),
+                    byteHistogramWritable);
+    }
+  }
+
+  // ************************************************************
+  // ByteCount Main
+  // ************************************************************
+  public static void main(String[] args) throws Exception {
     // p. 26
-    org.apache.hadoop.mapreduce.Job job = new
-                                          org.apache.hadoop.mapreduce.Job();
+    // https://hadoop.apache.org/docs/r2.7.2/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html
 
+    org.apache.hadoop.conf.Configuration configuration =
+                                  new org.apache.hadoop.conf.Configuration();
+    org.apache.hadoop.mapreduce.Job job =
+              org.apache.hadoop.mapreduce.Job.getInstance(configuration,
+                      "Byte Count app, prelude to RDC byte count histogram");
     job.setJarByClass(ByteCount.class);
-    job.setJobName("Byte Count app, prelude to RDC byte count histogram");
 
-    org.apache.hadoop.mapreduce.lib.input.FileInputFormat.addInputPath(
-                              new path("Fedora-Xfce-Live-x86_64-24-1.2.iso"));
+    job.setMapperClass(SplitMapper.class);
+//?    job.setCombinerClass(SplitReducer.class);
+    job.setReducerClass(SplitReducer.class);
 
-    org.apache.hadoop.mapreduce.lib.input.FileInputFormat.setOutputPath(
-                              new path("byte_count_output_1"));
+    job.setOutputKeyClass(org.apache.hadoop.io.NullWritable.class);
+    job.setOutputValueClass(ByteHistogramWritable.class);
 
-    job.setMapperClass(
-    
+
+
+    org.apache.hadoop.mapreduce.lib.input.FileInputFormat.addInputPath(job,
+                                   new org.apache.hadoop.fs.Path(
+                                   "Fedora-Xfce-Live-x86_64-24-1.2.iso"));
+    org.apache.hadoop.mapreduce.lib.output.FileOutputFormat.setOutputPath(job,
+                                   new org.apache.hadoop.fs.Path(
+                                   "byte_count_output_1"));
+
+    System.exit(job.waitForCompletion(true) ? 0 : 1);
+  }
+}
 

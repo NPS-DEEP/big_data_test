@@ -1,3 +1,5 @@
+*.jar
+*.swp
 *.class
 *.log
 
