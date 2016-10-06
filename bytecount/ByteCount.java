@@ -196,7 +196,15 @@ public class ByteCount {
     }
 
     public String toString() {
-      return java.util.Arrays.toString(byteHistogram);
+      StringBuilder b = new StringBuilder();
+      long total = 0;
+      for (int i=0; i<256; i++) {
+        b.append(byteHistogram[i]);
+        b.append(" ");
+        total += byteHistogram[i];
+      }
+      b.append(total);
+      return b.toString();
     }
 
     public static ByteHistogramWritable read(java.io.DataInput in)
@@ -215,7 +223,7 @@ public class ByteCount {
   //
   // Currently: take bytes from reader and count them into the bytes histogram.
   // ************************************************************
-  static class SplitMapper extends org.apache.hadoop.mapreduce.Mapper<
+  public static class SplitMapper extends org.apache.hadoop.mapreduce.Mapper<
                        SplitInfoWritable,
                        org.apache.hadoop.io.BytesWritable,
                        org.apache.hadoop.io.NullWritable,
@@ -224,8 +232,8 @@ public class ByteCount {
     @Override
     public void map(SplitInfoWritable key,
                     org.apache.hadoop.io.BytesWritable value,
-                    org.apache.hadoop.mapreduce.Mapper.Context context)
-                                   throws IOException, InterruptedException {
+                    Context context)
+                                throws IOException, InterruptedException {
 
       // populate a new ByteHistogramWriable from the bytes from the split
       ByteHistogramWritable byteHistogramWritable = new ByteHistogramWritable();
@@ -246,7 +254,7 @@ public class ByteCount {
   //
   // Currently: take bytes from reader and count them into the bytes histogram.
   // ************************************************************
-  static class SplitReducer extends org.apache.hadoop.mapreduce.Reducer<
+  public static class SplitReducer extends org.apache.hadoop.mapreduce.Reducer<
                        org.apache.hadoop.io.NullWritable,
                        ByteHistogramWritable,
                        org.apache.hadoop.io.NullWritable,
@@ -254,8 +262,8 @@ public class ByteCount {
 
     public void reduce(org.apache.hadoop.io.NullWritable key,
                        Iterable<ByteHistogramWritable> values,
-                       org.apache.hadoop.mapreduce.Reducer.Context context)
-                                   throws IOException, InterruptedException {
+                       Context context)
+                                throws IOException, InterruptedException {
 
       // populate a new ByteHistogramWriable from the bytes from the split
       ByteHistogramWritable byteHistogramWritable = new ByteHistogramWritable();
@@ -293,8 +301,6 @@ public class ByteCount {
 
     job.setOutputKeyClass(org.apache.hadoop.io.NullWritable.class);
     job.setOutputValueClass(ByteHistogramWritable.class);
-
-
 
     org.apache.hadoop.mapreduce.lib.input.FileInputFormat.addInputPath(job,
                                    new org.apache.hadoop.fs.Path(
