@@ -10,8 +10,11 @@ public class ByteCount {
   // ************************************************************
   // SplitInfoWritable containing the split path, start, and length
   // A Writable containing split metadata available for diagnostics.
+  // SplitInfoWritable can be used as a key, so it must implement
+  // WritableComparable, and not just Writable.
   // ************************************************************
-  static class SplitInfoWritable implements org.apache.hadoop.io.Writable {
+  static class SplitInfoWritable implements
+                 org.apache.hadoop.io.WritableComparable<SplitInfoWritable> {
 
     private String path;
     private long start;
@@ -23,16 +26,58 @@ public class ByteCount {
       length = _length;
     }
 
+    @Override
     public void write(java.io.DataOutput out) throws IOException {
       out.writeUTF(path);
       out.writeLong(start);
       out.writeLong(length);
     }
 
+    @Override
     public void readFields(java.io.DataInput in) throws IOException {
       path = in.readUTF();
       start = in.readLong();
       length = in.readLong();
+    }
+
+    @Override
+    public int hashCode() {
+      return (path.hashCode() * 163 + (int)start) * 163 + (int)length;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (o instanceof SplitInfoWritable) {
+        SplitInfoWritable s = (SplitInfoWritable)o;
+        return path.equals(s.path) && start == s.start && length == s.length;
+      }
+      return false;
+    }
+
+    @Override
+    public String toString() {
+      return "path: " + path + ", start: " + start + ", length: " + length;
+    }
+
+    @Override
+    public int compareTo(SplitInfoWritable s) {
+      int cmp = path.compareTo(s.path);
+      if (cmp != 0) {
+        return cmp;
+      }
+      if (start > s.start) {
+        return 1;
+      }
+      if (start < s.start) {
+        return -1;
+      }
+      if (length > s.length) {
+        return 1;
+      }
+      if (length < s.length) {
+        return -1;
+      }
+      return 0;
     }
 
     public static SplitInfoWritable read(java.io.DataInput in)
@@ -239,8 +284,12 @@ public class ByteCount {
       ByteHistogramWritable byteHistogramWritable = new ByteHistogramWritable();
       byte[] contents = value.getBytes();
       for (int i = 0; i< contents.length; i++) {
-        ++byteHistogramWritable.byteHistogram[i];
+//System.out.println("SplitMapper content: " + contents[i]);
+        ++byteHistogramWritable.byteHistogram[contents[i]];
       }
+
+//System.out.println("SplitMapper key length: " + contents.length);
+//System.out.println("SplitMapper value: " + byteHistogramWritable);
 
       // write the new key, value tuple
       context.write(org.apache.hadoop.io.NullWritable.get(),
@@ -283,6 +332,13 @@ public class ByteCount {
 
   // ************************************************************
   // ByteCount Main
+  //
+  // K1 = SplitInfoWritable 
+  // V1 = org.apache.hadoop.io.BytesWritable
+  // K2 = org.apache.hadoop.io.NullWritable
+  // V2 = ByteHistogramWritable
+  // K3 = org.apache.hadoop.io.NullWritable
+  // V3 = ByteHistogramWritable
   // ************************************************************
   public static void main(String[] args) throws Exception {
     // p. 26
@@ -292,22 +348,41 @@ public class ByteCount {
                                   new org.apache.hadoop.conf.Configuration();
     org.apache.hadoop.mapreduce.Job job =
               org.apache.hadoop.mapreduce.Job.getInstance(configuration,
-                      "Byte Count app, prelude to RDC byte count histogram");
+                      "Byte Count app");
     job.setJarByClass(ByteCount.class);
 
+
+
+    // p. 215, p. 212
+    job.setInputFormatClass(SplitFileInputFormat.class);
+    job.setMapperClass(SplitMapper.class);
+    job.setMapOutputKeyClass(org.apache.hadoop.io.NullWritable.class);
+    job.setMapOutputValueClass(ByteHistogramWritable.class);
+    // partitioner class, not set
+    job.setNumReduceTasks(1);
+    job.setReducerClass(SplitReducer.class);
+    job.setOutputKeyClass(org.apache.hadoop.io.NullWritable.class);
+    job.setOutputValueClass(ByteHistogramWritable.class);
+
+
+/*
     job.setMapperClass(SplitMapper.class);
 //?    job.setCombinerClass(SplitReducer.class);
     job.setReducerClass(SplitReducer.class);
 
     job.setOutputKeyClass(org.apache.hadoop.io.NullWritable.class);
     job.setOutputValueClass(ByteHistogramWritable.class);
+*/
 
     org.apache.hadoop.mapreduce.lib.input.FileInputFormat.addInputPath(job,
                                    new org.apache.hadoop.fs.Path(
                                    "Fedora-Xfce-Live-x86_64-24-1.2.iso"));
+//    org.apache.hadoop.mapreduce.lib.input.FileInputFormat.addInputPath(job,
+//                                   new org.apache.hadoop.fs.Path(
+//                                   "smallfile"));
     org.apache.hadoop.mapreduce.lib.output.FileOutputFormat.setOutputPath(job,
                                    new org.apache.hadoop.fs.Path(
-                                   "byte_count_output_1"));
+                                   "byte_count_output"));
 
     System.exit(job.waitForCompletion(true) ? 0 : 1);
   }
