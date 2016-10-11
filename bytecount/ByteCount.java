@@ -104,7 +104,8 @@ public class ByteCount {
     private SplitInfoWritable currentKey;
     private org.apache.hadoop.io.BytesWritable currentValue =
                                  new org.apache.hadoop.io.BytesWritable();
-    private boolean isDone = false;
+    private long more;
+    private final long maxStep = 131072; // 2^17=128KiB
 
 
     @Override
@@ -127,24 +128,21 @@ public class ByteCount {
                                        path.getFileSystem(configuration);
       in = fileSystem.open(path);
       in.seek(start);
+      more = fileSplit.getLength();
 
       // set key so diagnostics can have metadata about the split
       currentKey = new SplitInfoWritable(
                                   fileSplit.getPath().toString(), // path
                                   fileSplit.getStart(),           // start
                                   fileSplit.getLength());         // length
-
-      // although the value can be read during initialize(), save it
-      // for nextKeyValue().
+//System.out.println("SplitFileRecordReader.initialize: " + currentKey);
     }
 
     @Override
     public boolean nextKeyValue() throws IOException, InterruptedException {
 
-      // Unlike most readers which return parts of the split as keyed
-      // structures, SplitFileRecordReader reads and returns the entire
-      // split in one giant BytesWritable value.
-      if (isDone == true) {
+      // done when no more bytes to read in split
+      if (more == 0) {
         return false;
       }
 
@@ -152,12 +150,14 @@ public class ByteCount {
       // currentKey is aready set
 
       // value
-      byte[] contents = new byte[(int)currentKey.length];
-      org.apache.hadoop.io.IOUtils.readFully(in, contents, 0, contents.length);
+      long count = (more > maxStep) ? maxStep : more;
+
+      byte[] contents = new byte[(int)count];
+      org.apache.hadoop.io.IOUtils.readFully(in, contents, 0, (int)count);
       currentValue.set(contents, 0, contents.length);
 
-      // done
-      isDone = true;
+      // track how many more bytes are available in the split
+      more -= count;
       return true;
     }
 
@@ -175,7 +175,7 @@ public class ByteCount {
 
     @Override
     public float getProgress() throws IOException {
-      return isDone ? 1.0f : 0.0f;
+      return more / (float)currentKey.length;
     }
 
     @Override
@@ -282,14 +282,10 @@ public class ByteCount {
 
       // populate a new ByteHistogramWriable from the bytes from the split
       ByteHistogramWritable byteHistogramWritable = new ByteHistogramWritable();
-      byte[] contents = value.getBytes();
+      byte[] contents = value.copyBytes();
       for (int i = 0; i< contents.length; i++) {
-//System.out.println("SplitMapper content: " + contents[i]);
-        ++byteHistogramWritable.byteHistogram[contents[i]];
+        ++byteHistogramWritable.byteHistogram[(contents[i]&0xff)];
       }
-
-//System.out.println("SplitMapper key length: " + contents.length);
-//System.out.println("SplitMapper value: " + byteHistogramWritable);
 
       // write the new key, value tuple
       context.write(org.apache.hadoop.io.NullWritable.get(),
@@ -363,16 +359,6 @@ public class ByteCount {
     job.setReducerClass(SplitReducer.class);
     job.setOutputKeyClass(org.apache.hadoop.io.NullWritable.class);
     job.setOutputValueClass(ByteHistogramWritable.class);
-
-
-/*
-    job.setMapperClass(SplitMapper.class);
-//?    job.setCombinerClass(SplitReducer.class);
-    job.setReducerClass(SplitReducer.class);
-
-    job.setOutputKeyClass(org.apache.hadoop.io.NullWritable.class);
-    job.setOutputValueClass(ByteHistogramWritable.class);
-*/
 
     org.apache.hadoop.mapreduce.lib.input.FileInputFormat.addInputPath(job,
                                    new org.apache.hadoop.fs.Path(
