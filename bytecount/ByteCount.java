@@ -3,9 +3,8 @@
 
 import java.io.IOException;
 
-//public class ByteCount extends org.apache.hadoop.conf.Configured
-//                       implements org.apache.hadoop.util.Tool {
-public class ByteCount {
+public class ByteCount extends org.apache.hadoop.conf.Configured
+                       implements org.apache.hadoop.util.Tool {
 
   // ************************************************************
   // SplitInfoWritable containing the split path, start, and length
@@ -327,8 +326,6 @@ public class ByteCount {
   }
 
   // ************************************************************
-  // ByteCount Main
-  //
   // K1 = SplitInfoWritable 
   // V1 = org.apache.hadoop.io.BytesWritable
   // K2 = org.apache.hadoop.io.NullWritable
@@ -336,18 +333,29 @@ public class ByteCount {
   // K3 = org.apache.hadoop.io.NullWritable
   // V3 = ByteHistogramWritable
   // ************************************************************
-  public static void main(String[] args) throws Exception {
+  public int run(String[] args) throws Exception {
+
     // p. 26
     // https://hadoop.apache.org/docs/r2.7.2/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html
+    // http://stackoverflow.com/questions/8603788/hadoop-jobconf-class-is-deprecated-need-updated-example
 
-    org.apache.hadoop.conf.Configuration configuration =
-                                  new org.apache.hadoop.conf.Configuration();
+    // logger
+//zz    org.apache.log4j.BasicConfigurator.configure();
+
+    // check usage
+    if (args.length != 2) {
+      System.err.println("Usage: ByteCount <input path> <output path>");
+      System.exit(-1);
+    }
+
+    // configuration processed by ToolRunner
+    org.apache.hadoop.conf.Configuration configuration = this.getConf();
+
+    // create job
     org.apache.hadoop.mapreduce.Job job =
               org.apache.hadoop.mapreduce.Job.getInstance(configuration,
                       "Byte Count app");
     job.setJarByClass(ByteCount.class);
-
-
 
     // p. 215, p. 212
     job.setInputFormatClass(SplitFileInputFormat.class);
@@ -360,17 +368,55 @@ public class ByteCount {
     job.setOutputKeyClass(org.apache.hadoop.io.NullWritable.class);
     job.setOutputValueClass(ByteHistogramWritable.class);
 
-    org.apache.hadoop.mapreduce.lib.input.FileInputFormat.addInputPath(job,
-                                   new org.apache.hadoop.fs.Path(
-                                   "Fedora-Xfce-Live-x86_64-24-1.2.iso"));
+    // set input to all files recursively under <input path>
+    // http://stackoverflow.com/questions/11342400/how-to-list-all-files-in-a-directory-and-its-subdirectories-in-hadoop-hdfs
+    org.apache.hadoop.fs.Path inputPath = new org.apache.hadoop.fs.Path(
+                                                                   args[0]);
+    org.apache.hadoop.fs.FileSystem fileSystem =
+                         org.apache.hadoop.fs.FileSystem.get(configuration);
+    org.apache.hadoop.fs.RemoteIterator<org.apache.hadoop.fs.LocatedFileStatus>
+              fileStatusListIterator = fileSystem.listFiles(inputPath, true);
+    while (fileStatusListIterator.hasNext()) {
+      org.apache.hadoop.fs.LocatedFileStatus locatedFileStatus =
+                                               fileStatusListIterator.next();
+      org.apache.hadoop.fs.Path path = locatedFileStatus.getPath();
+
+      // skip some files
+      if (path.toString().indexOf("/output/") != -1) {
+        continue;
+      }
+      System.out.println("adding path " + path.toString());
+
+      org.apache.hadoop.mapreduce.lib.input.FileInputFormat.addInputPath(job,
+                                                locatedFileStatus.getPath());
+    }
+//    org.apache.hadoop.mapreduce.lib.input.FileInputFormat.addInputPath(job,
+//                                   new org.apache.hadoop.fs.Path(
+//                                   "Fedora-Xfce-Live-x86_64-24-1.2.iso"));
 //    org.apache.hadoop.mapreduce.lib.input.FileInputFormat.addInputPath(job,
 //                                   new org.apache.hadoop.fs.Path(
 //                                   "smallfile"));
+
+    // set output to path <output path>
+//    org.apache.hadoop.mapreduce.lib.output.FileOutputFormat.setOutputPath(job,
+//                                     new org.apache.hadoop.fs.Path(args[1]));
     org.apache.hadoop.mapreduce.lib.output.FileOutputFormat.setOutputPath(job,
                                    new org.apache.hadoop.fs.Path(
                                    "byte_count_output"));
 
-    System.exit(job.waitForCompletion(true) ? 0 : 1);
+    job.submit();
+    return job.waitForCompletion(true) == true ? 0 : -1;
+  }
+
+  public static void main(String[] args) throws Exception {
+    org.apache.hadoop.conf.Configuration configuration =
+                                new org.apache.hadoop.conf.Configuration();
+    String[] remainingArgs = new org.apache.hadoop.util.GenericOptionsParser(
+                                     configuration, args).getRemainingArgs();
+
+    int status = org.apache.hadoop.util.ToolRunner.run(
+          new org.apache.hadoop.conf.Configuration(), new ByteCount(), args);
+    System.exit(status);
   }
 }
 
