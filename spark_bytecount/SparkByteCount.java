@@ -1,14 +1,12 @@
-// based loosely on https://hadoop.apache.org/docs/r2.7.2/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html
-// and Hadoop 4'th ed. p. 24, p. 229.
+// based loosely on Spark examples and
+// http://spark.apache.org/docs/latest/programming-guide.html
 
-import java.io.IOException;
+// maybe not
+import org.apache.spark.api.java.JavaSparkContext
+import org.apache.spark.api.java.JavaRDD
+import org.apache.spark.SparkConf
 
-public class ByteCount extends org.apache.hadoop.conf.Configured
-                       implements org.apache.hadoop.util.Tool {
-
-//  // log
-//  private static final org.apache.commons.logging.Log log =
-//        org.apache.commons.logging.LogFactory.getLog(ByteCount.class);
+public final class SparkByteCount {
 
   // ************************************************************
   // SplitInfoWritable containing the split path, start, and length
@@ -265,6 +263,73 @@ public class ByteCount extends org.apache.hadoop.conf.Configured
   }
 
   // ************************************************************
+  // Main
+  // ************************************************************
+
+  public static void main(String[] args) {
+
+    if (args.length < 2) {
+      System.err.println("Usage: SparkByteCount <input path> <output>");
+      System.exit(1);
+    }
+
+    org.apache.spark.SparkConf configuration = new org.apache.spark.SparkConf();
+    org.apache.spark.api.java.JavaSparkContext sc = new JavaSparkContext(
+                            "local", "Spark Byte Count App", configuration);
+
+/*
+public <K,V,F extends org.apache.hadoop.mapreduce.InputFormat<K,V>> JavaPairRDD<K,V> newAPIHadoopRDD(org.apache.hadoop.conf.Configuration conf,
+                                                                                            Class<F> fClass,
+                                                                                            Class<K> kClass,
+                                                                                            Class<V> vClass)
+
+Get an RDD for a given Hadoop file with an arbitrary new API InputFormat and extra configuration options to pass to the input format.
+
+Parameters:
+    conf - Configuration for setting up the dataset. Note: This will be put into a Broadcast. Therefore if you plan to reuse this conf to create multiple RDDs, you need to make sure you won't modify the conf. A safe approach is always creating a new conf for a new RDD.
+    fClass - Class of the InputFormat
+    kClass - Class of the keys
+    vClass - Class of the values
+
+    '''Note:''' Because Hadoop's RecordReader class re-uses the same Writable object for each record, directly caching the returned RDD will create many references to the same object. If you plan to directly cache Hadoop writable objects, you should first copy them using a map function.
+Returns:
+    (undocumented)
+*/
+
+/*
+Class JavaPairRDD<K,V>
+*/
+
+// from ByteCount using MapReduce:
+  // ************************************************************
+  // K1 = SplitInfoWritable 
+  // V1 = org.apache.hadoop.io.BytesWritable
+  // K2 = org.apache.hadoop.io.NullWritable
+  // V2 = ByteHistogramWritable
+  // K3 = org.apache.hadoop.io.NullWritable
+  // V3 = ByteHistogramWritable
+  // ************************************************************
+
+    // get the input RDD
+    org.apache.spark.api.java.JavaPairRDD<SplitInfoWritable,
+                                          org.apache.hadoop.io.BytesWritable>
+                  inputRDD = sc.newAPIHadoopRDD(
+                       configuration, SplitFileInputFormat.class,
+                       ByteHistogramWritable.class,
+                       org.apache.hadoop.io.BytesWritable);
+
+
+    org.apache.spark.api.java.JavaRDD<ByteHistogramWritable>
+              histograms = inputRDD.map(
+
+
+
+
+
+
+
+/*
+  // ************************************************************
   // SplitMapper
   // ref. p. 230.
   // ref. https://hadoop.apache.org/docs/r2.6.2/api/org/apache/hadoop/mapreduce/Mapper.html
@@ -422,5 +487,5 @@ public class ByteCount extends org.apache.hadoop.conf.Configured
           new org.apache.hadoop.conf.Configuration(), new ByteCount(), args);
     System.exit(status);
   }
-}
+*/
 
