@@ -383,10 +383,16 @@ public class ByteCount extends org.apache.hadoop.conf.Configured
                          org.apache.hadoop.fs.FileSystem.get(configuration);
     org.apache.hadoop.fs.RemoteIterator<org.apache.hadoop.fs.LocatedFileStatus>
               fileStatusListIterator = fileSystem.listFiles(inputPath, true);
+    int i = 0;
     while (fileStatusListIterator.hasNext()) {
       org.apache.hadoop.fs.LocatedFileStatus locatedFileStatus =
                                                fileStatusListIterator.next();
       org.apache.hadoop.fs.Path path = locatedFileStatus.getPath();
+
+      // restrict number of files to process or comment this out
+      if (++i > 10) {
+        break;
+      }
 
       System.out.println("adding path " + path.toString());
 
