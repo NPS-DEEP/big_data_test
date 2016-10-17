@@ -247,10 +247,13 @@ public class ByteCount extends org.apache.hadoop.conf.Configured
       StringBuilder b = new StringBuilder();
       long total = 0;
       for (int i=0; i<256; i++) {
-        b.append(byteHistogram[i]);
+        b.append(i);
         b.append(" ");
+        b.append(byteHistogram[i]);
+        b.append("\n");
         total += byteHistogram[i];
       }
+      b.append("total: ");
       b.append(total);
       return b.toString();
     }
@@ -385,10 +388,6 @@ public class ByteCount extends org.apache.hadoop.conf.Configured
                                                fileStatusListIterator.next();
       org.apache.hadoop.fs.Path path = locatedFileStatus.getPath();
 
-      // skip some files
-      if (path.toString().indexOf("/output/") != -1) {
-        continue;
-      }
       System.out.println("adding path " + path.toString());
 
       org.apache.hadoop.mapreduce.lib.input.FileInputFormat.addInputPath(job,
@@ -405,8 +404,7 @@ public class ByteCount extends org.apache.hadoop.conf.Configured
 //    org.apache.hadoop.mapreduce.lib.output.FileOutputFormat.setOutputPath(job,
 //                                     new org.apache.hadoop.fs.Path(args[1]));
     org.apache.hadoop.mapreduce.lib.output.FileOutputFormat.setOutputPath(job,
-                                   new org.apache.hadoop.fs.Path(
-                                   "byte_count_output"));
+                                   new org.apache.hadoop.fs.Path(args[1]));
 
     job.submit();
     return job.waitForCompletion(true) == true ? 0 : -1;
@@ -419,7 +417,8 @@ public class ByteCount extends org.apache.hadoop.conf.Configured
                                      configuration, args).getRemainingArgs();
 
     int status = org.apache.hadoop.util.ToolRunner.run(
-          new org.apache.hadoop.conf.Configuration(), new ByteCount(), args);
+                               new org.apache.hadoop.conf.Configuration(),
+                               new ByteCount(), remainingArgs);
     System.exit(status);
   }
 }
