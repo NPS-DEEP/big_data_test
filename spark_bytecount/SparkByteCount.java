@@ -245,10 +245,13 @@ public final class SparkByteCount {
       StringBuilder b = new StringBuilder();
       long total = 0;
       for (int i=0; i<256; i++) {
-        b.append(byteHistogram[i]);
+        b.append(i);
         b.append(" ");
+        b.append(byteHistogram[i]);
+        b.append("\n");
         total += byteHistogram[i];
       }
+      b.append("total: ");
       b.append(total);
       return b.toString();
     }

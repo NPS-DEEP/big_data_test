@@ -1,13 +1,18 @@
+INPUT = input
+#INPUT = /user/tjandrze/DEEP/input
+#INPUT = /user/tjandrze/DEEP/sample/input
+
+OUTPUT = spark_byte_count_output
 
 # compile and make jar
-ByteCount.jar:
-	rm -rf byte_count_output
-	hdfs dfs -rm -f -r byte_count_output
-	hadoop com.sun.tools.javac.Main ByteCount.java \
+SparkByteCount.jar:
+	rm -rf $(OUTPUT)
+	hdfs dfs -rm -f -r $(OUTPUT)
+	hadoop com.sun.tools.javac.Main SparkByteCount.java \
                       -Xlint:deprecation -Xlint:unchecked
-	jar cf bytecount.jar ByteCount*.class
-	hadoop jar bytecount.jar ByteCount . byte_count_output
-	hdfs dfs -get byte_count_output byte_count_output
+	jar cf sparkbytecount.jar SparkByteCount*.class
+	hadoop jar sparkbytecount.jar SparkByteCount $(INPUT) $(OUTPUT)
+	hdfs dfs -get $(OUTPUT) $(OUTPUT)
 
 clean:
 	rm -f *.class *.jar

@@ -370,7 +370,7 @@ public class ByteCount extends org.apache.hadoop.conf.Configured
     job.setMapOutputKeyClass(org.apache.hadoop.io.NullWritable.class);
     job.setMapOutputValueClass(ByteHistogramWritable.class);
     // partitioner class, not set
-    job.setNumReduceTasks(1);
+//    job.setNumReduceTasks(1);
     job.setReducerClass(SplitReducer.class);
     job.setOutputKeyClass(org.apache.hadoop.io.NullWritable.class);
     job.setOutputValueClass(ByteHistogramWritable.class);
@@ -407,7 +407,7 @@ public class ByteCount extends org.apache.hadoop.conf.Configured
                                    new org.apache.hadoop.fs.Path(args[1]));
 
     job.submit();
-    return job.waitForCompletion(true) == true ? 0 : -1;
+    return job.waitForCompletion(true) == true ? 0 : 1;
   }
 
   public static void main(String[] args) throws Exception {
