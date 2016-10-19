@@ -314,6 +314,17 @@ Class JavaPairRDD<K,V>
   // ************************************************************
 
     // get the input RDD
+    org.apache.spark.rdd<scala.Tuple2<String,
+                         org.apache.spark.input.PortableDataStream>>
+               rddSplits = sc.binaryFiles(args[0]);
+
+    rddSplits.map(
+
+
+
+
+
+
     org.apache.spark.api.java.JavaPairRDD<SplitInfoWritable,
                                           org.apache.hadoop.io.BytesWritable>
                   inputRDD = sc.newAPIHadoopRDD(
