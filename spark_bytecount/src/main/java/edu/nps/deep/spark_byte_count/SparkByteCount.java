@@ -1,10 +1,12 @@
 // based loosely on Spark examples and
 // http://spark.apache.org/docs/latest/programming-guide.html
 
+package edu.nps.deep.spark_byte_count;
+
 // maybe not
-import org.apache.spark.api.java.JavaSparkContext
-import org.apache.spark.api.java.JavaRDD
-import org.apache.spark.SparkConf
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.SparkConf;
 
 public final class SparkByteCount {
 

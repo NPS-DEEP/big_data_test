@@ -2,6 +2,7 @@
 *.swp
 *.class
 *.log
+.gradle
 
 # sbt specific
 .cache
