@@ -78,8 +78,8 @@ public final class SparkByteCount {
 
   public static void main(String[] args) {
 
-    if (args.length < 2) {
-      System.err.println("Usage: SparkByteCount <input path> <output>");
+    if (args.length != 1) {
+      System.err.println("Usage: SparkByteCount <input path>");
       System.exit(1);
     }
 

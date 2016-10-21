@@ -3,6 +3,8 @@
 *.class
 *.log
 .gradle
+build/
+bytecount/byte_count_output/
 
 # sbt specific
 .cache

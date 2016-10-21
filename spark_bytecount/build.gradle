@@ -1,7 +1,6 @@
 apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'idea'
-// apply plugin: 'application'
 
 group = 'NPS_DEEP'
 version = '0.0.0'
@@ -41,15 +40,11 @@ configurations {
 
 dependencies {
   //spark
-//  compile "com.sparkjava:spark-core:2.0.0"
-//  compile "com.sparkjava:spark-core:2.5"
   provided "org.apache.spark:spark-core_${scalaBinaryVersion}:${sparkVersion}"
-//  provided "org.apache.spark:spark-core:${sparkVersion}"
 }
 
 task run(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'
-//  args = ["--class","edu.nps.deep.spark_byte_count.SparkByteCount",  "--driver-memory", "8g",  "--files", "/home/bdallen/log4j.properties", "/home/bdallen/big_data_test/spark_bytecount/build/libs/spark_bytecount-${version}.jar", "/home/bdallen/zz", "/home/bdallen/zz_out"]
-  args = ["--class","edu.nps.deep.spark_byte_count.SparkByteCount",  "--master", "spark://localhost:7077", "--driver-memory", "8g",  "--files", "/home/bdallen/log4j.properties", "/home/bdallen/big_data_test/spark_bytecount/build/libs/spark_bytecount-${version}.jar", "input", "/home/bdallen/zz_out"]
+  args = ["--class","edu.nps.deep.spark_byte_count.SparkByteCount", "--master", "yarn", "--driver-memory", "8g",  "--files", "/home/bdallen/log4j.properties", "/home/bdallen/big_data_test/spark_bytecount/build/libs/spark_bytecount-${version}.jar", "input"]
 }
 
