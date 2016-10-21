@@ -13,7 +13,7 @@ public final class SparkByteCount {
   // ************************************************************
   // ByteHistogram containing a histogram distribution of bytes.
   // ************************************************************
-  static class ByteHistogram {
+  static class ByteHistogram implements java.io.Serializable {
     public long[] histogram = new long[256];
 
     public ByteHistogram() {
@@ -29,8 +29,14 @@ public final class SparkByteCount {
 
       java.io.DataInputStream in = portableIn.open();
       while (true) {
-        int size = in.read(bytes);
-        if (size = -1) {
+        int size;
+        try {
+          size = in.read(bytes);
+        } catch (java.io.IOException e) {
+          System.err.println("Error in ByteHistogram read: " + e);
+          break;
+        }
+        if (size == -1) {
           // at EOF
           break;
         }
@@ -102,7 +108,7 @@ public final class SparkByteCount {
     ByteHistogram histogramTotal = histogramRDD.reduce(
             new org.apache.spark.api.java.function.Function2<
             ByteHistogram, ByteHistogram, ByteHistogram>() {
-      @override
+      @Override
       public ByteHistogram call(ByteHistogram v1, ByteHistogram v2) {
         ByteHistogram v3 = new ByteHistogram();
         v3.add(v1);
