@@ -5,8 +5,13 @@ package edu.nps.deep.spark_byte_count;
 
 // maybe not
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.SparkConf;
+import org.apache.spark.input.PortableDataStream;
+import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.Function2;
+import scala.Tuple2;
 
 public final class SparkByteCount {
 
@@ -20,7 +25,7 @@ public final class SparkByteCount {
       histogram = new long[256];
     }
 
-    public ByteHistogram(org.apache.spark.input.PortableDataStream portableIn) {
+    public ByteHistogram(PortableDataStream portableIn) {
       histogram = new long[256];
 
       long bytesRead = 0;
@@ -83,31 +88,28 @@ public final class SparkByteCount {
       System.exit(1);
     }
 
-    org.apache.spark.SparkConf configuration = new org.apache.spark.SparkConf();
-    org.apache.spark.api.java.JavaSparkContext sc = new JavaSparkContext(
+    SparkConf configuration = new SparkConf();
+    JavaSparkContext sc = new JavaSparkContext(
                             "local", "Spark Byte Count App", configuration);
 
     // get the input pair RDD
-    org.apache.spark.api.java.JavaPairRDD<String,
-                         org.apache.spark.input.PortableDataStream>
-               pairRDDSplits = sc.binaryFiles(args[0]);
+    JavaPairRDD<String, PortableDataStream> pairRDDSplits = 
+                                             sc.binaryFiles(args[0]);
 
     // map to get individual histograms from each split
-    org.apache.spark.api.java.JavaRDD<ByteHistogram> histogramRDD =
-            pairRDDSplits.map(new org.apache.spark.api.java.function.Function
-            <scala.Tuple2<String, org.apache.spark.input.PortableDataStream>,
+    JavaRDD<ByteHistogram> histogramRDD = pairRDDSplits.map(
+            new Function <Tuple2<String, PortableDataStream>,
             ByteHistogram>() {
       @Override
-      public ByteHistogram call(scala.Tuple2<String, 
-            org.apache.spark.input.PortableDataStream> pair) throws Exception {
+      public ByteHistogram call(Tuple2<String, PortableDataStream> pair)
+                                                           throws Exception {
         return new ByteHistogram(pair._2());
       }
     });
 
     // join individual histograms to get histogram total
     ByteHistogram histogramTotal = histogramRDD.reduce(
-            new org.apache.spark.api.java.function.Function2<
-            ByteHistogram, ByteHistogram, ByteHistogram>() {
+            new Function2< ByteHistogram, ByteHistogram, ByteHistogram>() {
       @Override
       public ByteHistogram call(ByteHistogram v1, ByteHistogram v2) {
         ByteHistogram v3 = new ByteHistogram();

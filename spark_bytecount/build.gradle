@@ -6,8 +6,7 @@ group = 'NPS_DEEP'
 version = '0.0.0'
 
 project.ext {
-  sparkVersion = '2.0.0'
-  scalaBinaryVersion = '2.10'
+  sparkVersion = '2.0.1'
 }
 
 jar {
@@ -40,7 +39,7 @@ configurations {
 
 dependencies {
   //spark
-  provided "org.apache.spark:spark-core_${scalaBinaryVersion}:${sparkVersion}"
+  provided "org.apache.spark:spark-core_2.11:${sparkVersion}"
 }
 
 task run(overwrite: true, type: Exec, dependsOn: [assemble]) {
@@ -48,3 +47,7 @@ task run(overwrite: true, type: Exec, dependsOn: [assemble]) {
   args = ["--class","edu.nps.deep.spark_byte_count.SparkByteCount", "--master", "yarn", "--driver-memory", "8g",  "--files", "/home/bdallen/log4j.properties", "/home/bdallen/big_data_test/spark_bytecount/build/libs/spark_bytecount-${version}.jar", "input"]
 }
 
+task run2(overwrite: true, type: Exec, dependsOn: [assemble]) {
+  executable = 'spark-submit'
+  args = ["--class","edu.nps.deep.spark_byte_count.SparkByteCount", "--master", "yarn", "--driver-memory", "8g",  "--files", "/home/bdallen/log4j.properties", "/home/bdallen/big_data_test/spark_bytecount/build/libs/spark_bytecount-${version}.jar", "/user/tjandrze/DEEP/sample/input"]
+}
