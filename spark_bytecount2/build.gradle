@@ -49,5 +49,10 @@ task run(overwrite: true, type: Exec, dependsOn: [assemble]) {
 
 task run2(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'
-  args = ["--class","edu.nps.deep.spark_byte_count2.SparkByteCount2", "--master", "yarn", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/big_data_test/spark_bytecount2/build/libs/spark_bytecount2-${version}.jar", "/user/tjandrze/DEEP/sample/input"]
+  args = ["--class","edu.nps.deep.spark_byte_count2.SparkByteCount2", "--master", "yarn", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/spark_bytecount2/build/libs/spark_bytecount2-${version}.jar", "/user/tjandrze/DEEP/sample/input"]
+}
+
+task run3(overwrite: true, type: Exec, dependsOn: [assemble]) {
+  executable = 'spark-submit'
+  args = ["--class","edu.nps.deep.spark_byte_count2.SparkByteCount2", "--master", "yarn", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/spark_bytecount2/build/libs/spark_bytecount2-${version}.jar", "/user/tjandrze/DEEP/input"]
 }

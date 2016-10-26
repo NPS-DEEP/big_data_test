@@ -4,7 +4,6 @@
 package edu.nps.deep.spark_byte_count2;
 
 import java.io.IOException;
-import org.apache.spark.SparkConf;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -12,14 +11,9 @@ import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
-
-
-
+import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.input.PortableDataStream;
-import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import scala.Tuple2;
 
