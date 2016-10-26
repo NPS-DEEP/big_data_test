@@ -54,6 +54,22 @@ public final class SparkByteCount2 {
         b.append(i);
         b.append(" ");
         b.append(histogram[i]);
+        total += histogram[i];
+      }
+      b.append("\n");
+      b.append("total: ");
+      b.append(total);
+      return b.toString();
+    }
+
+/*
+    public String toString() {
+      StringBuilder b = new StringBuilder();
+      long total = 0;
+      for (int i=0; i<256; i++) {
+        b.append(i);
+        b.append(" ");
+        b.append(histogram[i]);
         b.append("\n");
         total += histogram[i];
       }
@@ -61,6 +77,7 @@ public final class SparkByteCount2 {
       b.append(total);
       return b.toString();
     }
+*/
   }
 
   // ************************************************************
@@ -165,7 +182,7 @@ System.out.println("SplitFileRecordReader.initialize path: " +
   // SplitFileInputFormat implements createRecordReader which returns
   // SplitFileRecordReader for calculating ByteHistogram for one split.
   // ************************************************************
-  static class SplitFileInputFormat
+  public static class SplitFileInputFormat
         extends org.apache.hadoop.mapreduce.lib.input.FileInputFormat<
                          String, ByteHistogram> {
 
