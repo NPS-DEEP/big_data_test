@@ -245,15 +245,15 @@ System.out.println("SplitFileRecordReader.initialize path: " +
           break;
         }
 
-        System.out.println("adding " + locatedFileStatus.getPath().getLen() +
-                  " bytes at path " + locatedFileStatus.getPath().toString();
+        System.out.println("adding " + locatedFileStatus.getLen() +
+                  " bytes at path " + locatedFileStatus.getPath().toString());
 
 
         // add this file
         org.apache.hadoop.mapreduce.lib.input.FileInputFormat.addInputPath(
                                    hadoopJob, locatedFileStatus.getPath());
 
-        totalBytes += locatedFileStatus.getPath().getLen();
+        totalBytes += locatedFileStatus.getLen();
       }
       System.out.println("total bytes added: " + totalBytes);
 
