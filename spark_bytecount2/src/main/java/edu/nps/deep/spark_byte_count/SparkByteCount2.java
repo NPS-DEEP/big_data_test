@@ -234,6 +234,7 @@ System.out.println("SplitFileRecordReader.initialize path: " +
       RemoteIterator<LocatedFileStatus> fileStatusListIterator =
                                        fileSystem.listFiles(inputPath, true);
       int i = 0;
+      long totalBytes = 0;
       while (fileStatusListIterator.hasNext()) {
 
         // get file status for this file
@@ -244,13 +245,17 @@ System.out.println("SplitFileRecordReader.initialize path: " +
           break;
         }
 
-        System.out.println("adding path " +
-                           locatedFileStatus.getPath().toString());
+        System.out.println("adding " + locatedFileStatus.getPath().getLen() +
+                  " bytes at path " + locatedFileStatus.getPath().toString();
+
 
         // add this file
         org.apache.hadoop.mapreduce.lib.input.FileInputFormat.addInputPath(
                                    hadoopJob, locatedFileStatus.getPath());
+
+        totalBytes += locatedFileStatus.getPath().getLen();
       }
+      System.out.println("total bytes added: " + totalBytes);
 
       // create the RDD of byte histograms for splits
       JavaPairRDD<String, ByteHistogram> rdd = sparkContext.newAPIHadoopRDD(
