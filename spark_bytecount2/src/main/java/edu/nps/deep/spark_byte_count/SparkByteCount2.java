@@ -13,7 +13,9 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import scala.Tuple2;
 
@@ -48,11 +50,13 @@ public final class SparkByteCount2 {
         b.append(i);
         b.append(" ");
         b.append(histogram[i]);
+        b.append(" ");
         total += histogram[i];
       }
       b.append("\n");
       b.append("total: ");
       b.append(total);
+      b.append("\n");
       return b.toString();
     }
 
@@ -80,12 +84,13 @@ public final class SparkByteCount2 {
   // ************************************************************
   static class SplitFileRecordReader
                             extends org.apache.hadoop.mapreduce.RecordReader<
-                            String, ByteHistogram> {
+                            Long, ByteHistogram> {
 
     private org.apache.hadoop.mapreduce.InputSplit inputSplit;
     private org.apache.hadoop.mapreduce.TaskAttemptContext taskAttemptContext;
 
     private ByteHistogram byteHistogram = new ByteHistogram();
+    private long splitNumber = 0;
     private boolean isDone = false;
 
     @Override
@@ -107,7 +112,7 @@ public final class SparkByteCount2 {
       }
 
       // key
-      // not used
+      ++splitNumber;
 
       // value
 
@@ -151,8 +156,8 @@ System.out.println("SplitFileRecordReader.initialize path: " +
     }
 
     @Override
-    public String getCurrentKey() throws IOException, InterruptedException {
-      return "not used";
+    public Long getCurrentKey() throws IOException, InterruptedException {
+      return new Long(splitNumber);
     }
 
     @Override
@@ -178,12 +183,12 @@ System.out.println("SplitFileRecordReader.initialize path: " +
   // ************************************************************
   public static class SplitFileInputFormat
         extends org.apache.hadoop.mapreduce.lib.input.FileInputFormat<
-                         String, ByteHistogram> {
+                         Long, ByteHistogram> {
 
     // createRecordReader returns SplitFileRecordReader
     @Override
     public org.apache.hadoop.mapreduce.RecordReader<
-                         String, ByteHistogram>
+                         Long, ByteHistogram>
            createRecordReader(
                  org.apache.hadoop.mapreduce.InputSplit split,
                  org.apache.hadoop.mapreduce.TaskAttemptContext context)
@@ -209,9 +214,35 @@ System.out.println("SplitFileRecordReader.initialize path: " +
     // set up the Spark Configuration
     SparkConf sparkConfiguration = new SparkConf();
     sparkConfiguration.setAppName("Spark Byte Count App");
-    //sparkConfiguration.set("log4j.logger.org.apache.spark.rpc.akka.ErrorMonitor", "FATAL");
-    sparkConfiguration.set(
-               "log4j.logger.org.apache.spark.rpc.akka.ErrorMonitor", "TRACE");
+    sparkConfiguration.set("log4j.logger.org.apache.spark.rpc.akka.ErrorMonitor", "FATAL");
+    sparkConfiguration.set("log4j.logger.org.apache.spark.scheduler.DAGScheduler", "TRACE");
+    sparkConfiguration.set("fs.hdfs.impl.disable.cache", "true");
+    sparkConfiguration.set("spark.executor.extrajavaoptions", "-XX:+UseConcMarkSweepGC");
+
+//    sparkConfiguration.set("spark.executor.extrajavaoptions", "-Xss1g");
+//    sparkConfiguration.set("yarn.scheduler.capacity.maximum-applications", "10000");
+    sparkConfiguration.set("spark.dynamicAllocation.maxExecutors", "10000");
+
+    // http://stackoverflow.com/questions/33074288/getting-error-in-spark-executor-lost
+//    sparkConfiguration.set("spark.rpc.askTimeout", "1000");
+//    sparkConfiguration.set("spark.akka.timeout", "1000");
+//    sparkConfiguration.set("spark.akka.frameSize", "1000");
+//    sparkConfiguration.set("core.connection.ack.wait.timeout", "600");
+
+//    sparkConfiguration.set("spark.scheduler.mode", "FAIR");
+
+//    sparkConfiguration.set("spark.locality.wait", "8"); // default 3s
+
+// zz no, we will have multiple keys:    sparkConfiguration.set("spark.default.parallelism", "1");
+
+    sparkConfiguration.set("spark.default.parallelism", "64");
+
+//    sparkConfiguration.set("spark.scheduler.maxRegisterdResourcesWaitingTime", "5"); // default 30s
+
+    sparkConfiguration.set("spark.driver.maxResultSize", "8g"); // default 1g, may use 2.5g
+
+    //sparkConfiguration.set(
+    //           "log4j.logger.org.apache.spark.rpc.akka.ErrorMonitor", "TRACE");
 
     // set up the Spark context
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
@@ -240,10 +271,10 @@ System.out.println("SplitFileRecordReader.initialize path: " +
         // get file status for this file
         LocatedFileStatus locatedFileStatus = fileStatusListIterator.next();
 
-        // restrict number of files to process or else comment this out
-        if (++i > 10) {
-          break;
-        }
+//        // restrict number of files to process or else comment this out
+//        if (++i > 10) {
+//          break;
+//        }
 
         System.out.println("adding " + locatedFileStatus.getLen() +
                   " bytes at path " + locatedFileStatus.getPath().toString());
@@ -258,31 +289,113 @@ System.out.println("SplitFileRecordReader.initialize path: " +
       System.out.println("total bytes added: " + totalBytes);
 
       // create the RDD of byte histograms for splits
-      JavaPairRDD<String, ByteHistogram> rdd = sparkContext.newAPIHadoopRDD(
+      JavaPairRDD<Long, ByteHistogram> rdd = sparkContext.newAPIHadoopRDD(
                hadoopJob.getConfiguration(),        // configuration
                SplitFileInputFormat.class,          // F
-               String.class,                        // K
+               Long.class,                          // K
                ByteHistogram.class);                // V
 
-      // reduce RDD to total result
-      Tuple2<String, ByteHistogram> histogramTotalTuple = rdd.reduce(
-            new Function2<Tuple2<String, ByteHistogram>,
-                         Tuple2<String, ByteHistogram>,
-                         Tuple2<String, ByteHistogram>>() {
+
+/*
+      // copy rdd to rdd2
+      JavaRDD<Tuple2<Long, ByteHistogram>> rdd2 = rdd.map(
+            new Function<Tuple2<Long, ByteHistogram>,
+                         Tuple2<Long, ByteHistogram>>() {
         @Override
-        public Tuple2<String, ByteHistogram> call(
-                                Tuple2<String, ByteHistogram> v1,
-                                Tuple2<String, ByteHistogram> v2) {
-          ByteHistogram v3 = new ByteHistogram();
-          v3.add(v1._2());
-          v3.add(v2._2());
-          return new Tuple2<String, ByteHistogram>("not used 2", v3);
+        public Tuple2<Long, ByteHistogram> call(
+                                Tuple2<Long, ByteHistogram> v) {
+          return new Tuple2<Long, ByteHistogram>(v._1(), v._2());
+//          return new Tuple2<Long, ByteHistogram>(v);
         }
       });
+*/
+
+/*
+      // copy rdd to rdd2
+      JavaPairRDD<Long, ByteHistogram> rdd2 = rdd.map(
+            new Function<Tuple2<Long, ByteHistogram>,
+                         Tuple2<Long, ByteHistogram>>() {
+        @Override
+        public Tuple2<Long, ByteHistogram> call(
+                                Tuple2<Long, ByteHistogram> v) {
+//          return new Tuple2<Long, ByteHistogram>(v._1(), v._2());
+          return new Tuple2<Long, ByteHistogram>(v);
+        }
+      });
+*/
+
+//zz no      rdd.persist(org.apache.spark.storage.StorageLevel.DISK_ONLY());
+      JavaPairRDD<Long, ByteHistogram> rdd2 = rdd.reduceByKey(
+            new Function2<ByteHistogram, ByteHistogram, ByteHistogram>() {
+        @Override
+        public ByteHistogram call(ByteHistogram v1, ByteHistogram v2) {
+          ByteHistogram v3 = new ByteHistogram();
+          v3.add(v1);
+          v3.add(v2);
+          return v3;
+        }
+      });
+
+
+/*
+      JavaPairRDD<Long, ByteHistogram> rdd2 = rdd.aggregateByKey(
+            new ByteHistogram(),
+            new Function2<ByteHistogram, ByteHistogram, ByteHistogram>() {
+        @Override
+        public ByteHistogram call(ByteHistogram v1, ByteHistogram v2) {
+          ByteHistogram v3 = new ByteHistogram();
+          v3.add(v1);
+          v3.add(v2);
+          return v3;
+        }
+      },
+            new Function2<ByteHistogram, ByteHistogram, ByteHistogram>() {
+        @Override
+        public ByteHistogram call(ByteHistogram v1, ByteHistogram v2) {
+          ByteHistogram v3 = new ByteHistogram();
+          v3.add(v1);
+          v3.add(v2);
+          return v3;
+        }
+      });
+*/
+
+      // reduce RDD2 to total result
+      Tuple2<Long, ByteHistogram> histogramTotalTuple = rdd2.reduce(
+            new Function2<Tuple2<Long, ByteHistogram>,
+                         Tuple2<Long, ByteHistogram>,
+                         Tuple2<Long, ByteHistogram>>() {
+        @Override
+        public Tuple2<Long, ByteHistogram> call(
+                                Tuple2<Long, ByteHistogram> v1,
+                                Tuple2<Long, ByteHistogram> v2) {
+//          ByteHistogram v3 = new ByteHistogram();
+//          v3.add(v1._2());
+//          v3.add(v2._2());
+//          return new Tuple2<Long, ByteHistogram>(new Long(1), v3);
+
+          v1._2().add(v2._2());
+          return new Tuple2<Long, ByteHistogram>(new Long(1), v1._2());
+        }
+      });
+
+//      // save rdd2 as text file to review subtotal
+//zz error if exists      rdd2.saveAsTextFile("temp_rdd2_textfile");
 
       // show histogram total
       System.out.println("Histogram total:\n" +
                          histogramTotalTuple._2());
+
+      // save total in text file
+      java.io.File totalFile = new java.io.File("temp_total_textfile");
+      try {
+        java.io.BufferedWriter out = new java.io.BufferedWriter(new java.io.FileWriter(totalFile));
+        out.write("Histogram total:\n" +
+                         histogramTotalTuple._2());
+        out.close();
+      } catch (Exception e) {
+        System.out.println("Error: Failure saving " + totalFile.toString());
+      }
 
     }  catch (IOException e) {
       System.err.println("Error starting main: " + e);
