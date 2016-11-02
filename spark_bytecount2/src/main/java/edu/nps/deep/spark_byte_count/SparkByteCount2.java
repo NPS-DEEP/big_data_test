@@ -37,7 +37,7 @@ public final class SparkByteCount2 {
       }
     }
 
-    public void add(ByteHistogram other) {
+    public void add(ByteHistogram other) { 
       for (int i = 0; i< histogram.length; i++) {
         histogram[i] += other.histogram[i];
       }
@@ -125,8 +125,16 @@ public final class SparkByteCount2 {
       final long start = fileSplit.getStart();
       final long length = fileSplit.getLength();
 
-System.out.println("SplitFileRecordReader.initialize path: " +
+/* zz none of these work
+org.apache.log4j.LogManager.getRootLogger().error("zzzzzzz1 " +
+                    path + ", start: " + start + ", length: " + length);
+
+org.apache.log4j.Logger.getLogger(SparkByteCount2.class.getName()).error("zzzzzzz2 " +
                    path + ", start: " + start + ", length: " + length);
+
+System.out.println("SplitFileRecordReader.initialize path(zzzz3): " +
+                   path + ", start: " + start + ", length: " + length);
+*/
 
       // open the input file
       final org.apache.hadoop.conf.Configuration configuration =
@@ -217,32 +225,14 @@ System.out.println("SplitFileRecordReader.initialize path: " +
     sparkConfiguration.set("log4j.logger.org.apache.spark.rpc.akka.ErrorMonitor", "FATAL");
     sparkConfiguration.set("log4j.logger.org.apache.spark.scheduler.DAGScheduler", "TRACE");
     sparkConfiguration.set("fs.hdfs.impl.disable.cache", "true");
+    sparkConfiguration.set("spark.app.id", "Spark Byte Count 2 App");
     sparkConfiguration.set("spark.executor.extrajavaoptions", "-XX:+UseConcMarkSweepGC");
-
-//    sparkConfiguration.set("spark.executor.extrajavaoptions", "-Xss1g");
-//    sparkConfiguration.set("yarn.scheduler.capacity.maximum-applications", "10000");
     sparkConfiguration.set("spark.dynamicAllocation.maxExecutors", "10000");
 
-    // http://stackoverflow.com/questions/33074288/getting-error-in-spark-executor-lost
-//    sparkConfiguration.set("spark.rpc.askTimeout", "1000");
-//    sparkConfiguration.set("spark.akka.timeout", "1000");
-//    sparkConfiguration.set("spark.akka.frameSize", "1000");
-//    sparkConfiguration.set("core.connection.ack.wait.timeout", "600");
-
-//    sparkConfiguration.set("spark.scheduler.mode", "FAIR");
-
-//    sparkConfiguration.set("spark.locality.wait", "8"); // default 3s
-
-// zz no, we will have multiple keys:    sparkConfiguration.set("spark.default.parallelism", "1");
-
+// no, we will have multiple keys:    sparkConfiguration.set("spark.default.parallelism", "1");
     sparkConfiguration.set("spark.default.parallelism", "64");
 
-//    sparkConfiguration.set("spark.scheduler.maxRegisterdResourcesWaitingTime", "5"); // default 30s
-
     sparkConfiguration.set("spark.driver.maxResultSize", "8g"); // default 1g, may use 2.5g
-
-    //sparkConfiguration.set(
-    //           "log4j.logger.org.apache.spark.rpc.akka.ErrorMonitor", "TRACE");
 
     // set up the Spark context
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
@@ -295,73 +285,8 @@ System.out.println("SplitFileRecordReader.initialize path: " +
                Long.class,                          // K
                ByteHistogram.class);                // V
 
-
-/*
-      // copy rdd to rdd2
-      JavaRDD<Tuple2<Long, ByteHistogram>> rdd2 = rdd.map(
-            new Function<Tuple2<Long, ByteHistogram>,
-                         Tuple2<Long, ByteHistogram>>() {
-        @Override
-        public Tuple2<Long, ByteHistogram> call(
-                                Tuple2<Long, ByteHistogram> v) {
-          return new Tuple2<Long, ByteHistogram>(v._1(), v._2());
-//          return new Tuple2<Long, ByteHistogram>(v);
-        }
-      });
-*/
-
-/*
-      // copy rdd to rdd2
-      JavaPairRDD<Long, ByteHistogram> rdd2 = rdd.map(
-            new Function<Tuple2<Long, ByteHistogram>,
-                         Tuple2<Long, ByteHistogram>>() {
-        @Override
-        public Tuple2<Long, ByteHistogram> call(
-                                Tuple2<Long, ByteHistogram> v) {
-//          return new Tuple2<Long, ByteHistogram>(v._1(), v._2());
-          return new Tuple2<Long, ByteHistogram>(v);
-        }
-      });
-*/
-
-//zz no      rdd.persist(org.apache.spark.storage.StorageLevel.DISK_ONLY());
-      JavaPairRDD<Long, ByteHistogram> rdd2 = rdd.reduceByKey(
-            new Function2<ByteHistogram, ByteHistogram, ByteHistogram>() {
-        @Override
-        public ByteHistogram call(ByteHistogram v1, ByteHistogram v2) {
-          ByteHistogram v3 = new ByteHistogram();
-          v3.add(v1);
-          v3.add(v2);
-          return v3;
-        }
-      });
-
-
-/*
-      JavaPairRDD<Long, ByteHistogram> rdd2 = rdd.aggregateByKey(
-            new ByteHistogram(),
-            new Function2<ByteHistogram, ByteHistogram, ByteHistogram>() {
-        @Override
-        public ByteHistogram call(ByteHistogram v1, ByteHistogram v2) {
-          ByteHistogram v3 = new ByteHistogram();
-          v3.add(v1);
-          v3.add(v2);
-          return v3;
-        }
-      },
-            new Function2<ByteHistogram, ByteHistogram, ByteHistogram>() {
-        @Override
-        public ByteHistogram call(ByteHistogram v1, ByteHistogram v2) {
-          ByteHistogram v3 = new ByteHistogram();
-          v3.add(v1);
-          v3.add(v2);
-          return v3;
-        }
-      });
-*/
-
-      // reduce RDD2 to total result
-      Tuple2<Long, ByteHistogram> histogramTotalTuple = rdd2.reduce(
+      // reduce RDD to total result
+      Tuple2<Long, ByteHistogram> histogramTotalTuple = rdd.reduce(
             new Function2<Tuple2<Long, ByteHistogram>,
                          Tuple2<Long, ByteHistogram>,
                          Tuple2<Long, ByteHistogram>>() {
@@ -369,18 +294,12 @@ System.out.println("SplitFileRecordReader.initialize path: " +
         public Tuple2<Long, ByteHistogram> call(
                                 Tuple2<Long, ByteHistogram> v1,
                                 Tuple2<Long, ByteHistogram> v2) {
-//          ByteHistogram v3 = new ByteHistogram();
-//          v3.add(v1._2());
-//          v3.add(v2._2());
-//          return new Tuple2<Long, ByteHistogram>(new Long(1), v3);
 
+          // add second byteHistogram to first
           v1._2().add(v2._2());
           return new Tuple2<Long, ByteHistogram>(new Long(1), v1._2());
         }
       });
-
-//      // save rdd2 as text file to review subtotal
-//zz error if exists      rdd2.saveAsTextFile("temp_rdd2_textfile");
 
       // show histogram total
       System.out.println("Histogram total:\n" +
