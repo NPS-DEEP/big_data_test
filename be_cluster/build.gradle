@@ -1,0 +1,58 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'idea'
+
+group = 'NPS_DEEP'
+version = '0.0.0'
+
+project.ext {
+  sparkVersion = '2.0.1'
+}
+
+jar {
+  baseName = 'be_cluster'
+  version =  version
+  dependsOn configurations.runtime
+  from {
+    (configurations.runtime - configurations.provided).collect {
+      it.isDirectory() ? it : zipTree(it)
+    }
+  } {
+    exclude "META-INF/*.SF"
+    exclude "META-INF/*.DSA"
+    exclude "META-INF/*.RSA"
+  }
+}
+
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+configurations {
+    provided
+    compile.extendsFrom provided
+}
+
+dependencies {
+  //spark
+  provided "org.apache.spark:spark-core_2.11:${sparkVersion}"
+}
+
+task run(overwrite: true, type: Exec, dependsOn: [assemble]) {
+  executable = 'spark-submit'
+  args = ["--class","edu.nps.deep.be_cluster.BECluster", "--master", "yarn", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/big_data_test/be_cluster/build/libs/be_cluster-${version}.jar", "input"]
+}
+
+task run2(overwrite: true, type: Exec, dependsOn: [assemble]) {
+  executable = 'spark-submit'
+  args = ["--class","edu.nps.deep.be_cluster.SparkByteCount2", "--master", "yarn", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_cluster/build/libs/be_cluster-${version}.jar", "/user/tjandrze/DEEP/sample/input"]
+}
+
+task run3(overwrite: true, type: Exec, dependsOn: [assemble]) {
+  executable = 'spark-submit'
+  args = ["--class","edu.nps.deep.be_cluster.SparkByteCount2", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_cluster/build/libs/be_cluster-${version}.jar", "/user/tjandrze/DEEP/input"]
+}
