@@ -31,9 +31,9 @@ public final class SparkByteCount2 {
       histogram = new long[256];
     }
 
-    public void add(byte[] bytes) {
-      for (byte b : bytes) {
-        ++histogram[b&0xff];
+    public void add(char[] chars) {
+      for (char c : chars) {
+        ++histogram[c];
       }
     }
 
@@ -86,25 +86,24 @@ public final class SparkByteCount2 {
                             extends org.apache.hadoop.mapreduce.RecordReader<
                             Long, ByteHistogram> {
 
-    private org.apache.hadoop.mapreduce.InputSplit inputSplit;
-    private org.apache.hadoop.mapreduce.TaskAttemptContext taskAttemptContext;
-
+    private SplitReader splitReader;
     private ByteHistogram byteHistogram = new ByteHistogram();
     private long splitNumber = 0;
     private boolean isDone = false;
 
     @Override
     public void initialize(
-                 org.apache.hadoop.mapreduce.InputSplit _inputSplit,
-                 org.apache.hadoop.mapreduce.TaskAttemptContext _context)
+                 org.apache.hadoop.mapreduce.InputSplit split,
+                 org.apache.hadoop.mapreduce.TaskAttemptContext context)
                         throws IOException, InterruptedException {
 
-      this.inputSplit = _inputSplit;
-      this.taskAttemptContext = _context;
+      splitReader = SplitReader.getReader(split, context);
     }
 
     @Override
     public boolean nextKeyValue() throws IOException, InterruptedException {
+      int C_SIZE = 50000;
+      char[] c = new char[C_SIZE];
 
       // done when no more bytes to read in split
       if (isDone) {
@@ -115,50 +114,16 @@ public final class SparkByteCount2 {
       ++splitNumber;
 
       // value
-
-      // get InputSplit in terms of FileSplit
-      final org.apache.hadoop.mapreduce.lib.input.FileSplit fileSplit =
-                (org.apache.hadoop.mapreduce.lib.input.FileSplit)inputSplit;
-
-      // get path, start, and length
-      final org.apache.hadoop.fs.Path path = fileSplit.getPath();
-      final long start = fileSplit.getStart();
-      final long length = fileSplit.getLength();
-
-/* zz none of these work
-org.apache.log4j.LogManager.getRootLogger().error("zzzzzzz1 " +
-                    path + ", start: " + start + ", length: " + length);
-
-org.apache.log4j.Logger.getLogger(SparkByteCount2.class.getName()).error("zzzzzzz2 " +
-                   path + ", start: " + start + ", length: " + length);
-
-System.out.println("SplitFileRecordReader.initialize path(zzzz3): " +
-                   path + ", start: " + start + ", length: " + length);
-*/
-
-      // open the input file
-      final org.apache.hadoop.conf.Configuration configuration =
-                                   taskAttemptContext.getConfiguration();
-      final org.apache.hadoop.fs.FileSystem fileSystem =
-                                   path.getFileSystem(configuration);
-      org.apache.hadoop.fs.FSDataInputStream in = fileSystem.open(path);
-
-      // seek to the split
-      in.seek(start);
-
-      // iteratively read the partition
-      final long maxStep = 131072; // 2^17=128KiB
-      long more = fileSplit.getLength();
-      while (more > 0) {
-        long count = (more > maxStep) ? maxStep : more;
-        byte[] contents = new byte[(int)count];
-        org.apache.hadoop.io.IOUtils.readFully(in, contents, 0, (int)count);
-        byteHistogram.add(contents);
-        more -= count;
+      long splitDistance = splitReader.splitDistance();
+      while (splitDistance > 0) {
+        long count = (C_SIZE > splitDistance) ? C_SIZE : splitDistance;
+        splitReader.read(c, 0, count);
+        byteHistogram.add(c);
+        splitDistance -= count;
       }
 
       // done with this partition
-      org.apache.hadoop.io.IOUtils.closeStream(in);
+      splitReader.close();
       isDone = true;
       return true;
     }
@@ -179,10 +144,12 @@ System.out.println("SplitFileRecordReader.initialize path(zzzz3): " +
       return (isDone == true) ? 1.0f : 0.0f;
     }
 
+/*
     @Override
     public void close() throws IOException {
-      // no action
+      splitReader.close();
     }
+*/
   }
 
   // ************************************************************

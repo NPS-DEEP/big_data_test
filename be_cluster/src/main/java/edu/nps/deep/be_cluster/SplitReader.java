@@ -21,11 +21,33 @@ import scala.Tuple2;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.ios.IOUtils;
 
+/**
+ * Reader interface for reading char[n] from hadoop file bytes.
+ * Limitation: It is an IOException to read more than MAX_BUFSIZE at once.
+ *
+ * Note: This reads past the hadoop split.  Call splitDistance() to see
+ *       how many more bytes can be read before reaching the split.
+ */
 public final class SplitReader extends java.io.Reader {
 
-  private InputSplit inputSplit;
-  private TaskAttemptContext taskAttemptContext;
+  private final InputSplit inputSplit;
+  private final TaskAttemptContext taskAttemptContext;
+
+  // Hadoop input stream
+  private FSDataInputStream in;
+
+  // buffer between Hadoop and SplitReader output
+  private final MAX_BUFSIZE = 131072; // 2^17=128KiB
+  private long moreFile;
+  private long moreSplit;
+  private byte[] buffer;
+  private int bufferHead;
 
   private SplitReader(InputSplit split,
                      TaskAttemptContext context) {
@@ -33,20 +55,151 @@ public final class SplitReader extends java.io.Reader {
     taskAttemptContext = context;
   }
 
-  public SplitReader getReader(InputSplit split, TaskAttemptContext context)
+  // open and return a FSDataInputStream
+  private void openIN() throws IOException, InterruptedException {
+
+    // open the input file
+    final Path path = (FileSplit)inputSplit.getPath();
+    final Configuration configuration = taskAttemptContext.getConfiguration();
+    final FileSystem fileSystem = path.getFileSystem(configuration);
+    in = fileSystem.open(path);
+  }
+
+  // length of file
+  private void getFileLen() throws IOException, InterruptedException {
+    final Path path = (FileSplit)inputSplit.getPath();
+    final Configuration configuration = taskAttemptContext.getConfiguration();
+    final FileSystem fileSystem = path.getFileSystem(configuration);
+    long fileLen = fileSystem.getFileStatus(path).getLen();
+  }
+
+  // get a reader compatible with java.io.Reader
+  public static SplitReader getReader(InputSplit split,
+                                      TaskAttemptContext context)
                                throws IOException, InterruptedException {
+
+    // create the reader to return
     SplitReader reader = new SplitReader(split, context);
 
-
-
-    // get InputSplit in terms of FileSplit
-    final FileSplit fileSplit = (FileSplit)inputSplit;
-
-    // get path, start, and length
-    final org.apache.hadoop.fs.Path path = fileSplit.getPath();
+    // get offset to start of split
     final long start = fileSplit.getStart();
-    final long length = fileSplit.getLength();
 
+    // open the reader
+    reader.openIN();
 
+    // seek to the split
+    reader.in.seek(start);
+
+    // set initial values
+    reader.moreFile = getFileLen() - start;
+    if (reader.moreFile < 0) {
+      throw new IOException("invalid state");
+    }
+    reader.moreSplit = (FileSplit)inputSplit.getLength();
+    reader.buffer = new byte[MAX_BUFSIZE];
+    reader.bufferHead = MAX_BUFSIZE;
+  }
+
+  // read into buffer if it is too empty
+  private void prepareBuffer(int sizeRequested)
+                               throws IOException, InterruptedException {
+
+    // no action if data is available
+    int sizeAvailable = MAX_BUFSIZE - bufferHead;
+    if (sizeRequested <= sizeAvailable) {
+      return;
+    }
+
+    // no action if at EOF
+    if (moreFile == 0) {
+      System.err.println("Warn: SplitReader.prepareBuffer when moreFile is 0");
+      return;
+    }
+
+    // impose a max read size less than buffer size
+    if (sizeRequested > MAX_BUFSIZE / 2) {
+      throw new IOException("invalid state");
+    }
+
+    // shift unread bytes from end to beginning of buffer
+    int sizeUnread = MAX_BUFSIZE - bufferHead;
+    for (int i=0; i<sizeUnread; i++) {
+      buffer[i] = buffer[bufferHead + i];
+    }
+
+    // get count of bytes to read
+    long count = bufferHead;
+    if (count > moreFile) {
+      count = moreFile;
+    }
+
+    // read count of bytes into buffer
+    IOUtils.readFully(in, buffer, sizeUnread, count);
+
+    // adjust tracking variables
+    moreFile -= count;
+    moreSplit -= count; // goes negative when reading beyond split
+    bufferHead = 0;
+  }
+
+  // ************************************************************
+  // public Reader interfaces
+  // ************************************************************
+
+  // specialized interface
+  /**
+   * splitDistance becomes 0 and goes negative as we begin to read into
+   * the next split.
+   */
+  public long splitDistance() {
+    return moreSplit - (MAX_BUFSIZE - bufferHead);
+  }
+
+  // close
+  public void close() throws IOException, InterruptedException {
+    in.close();
+  }
+
+  // do not support marking
+  public boolean markSupported() {
+    return false;
+  }
+
+  public int read(char[] c, int off, int len)
+                      throws IOException, InterruptedException {
+
+    // require a max read size less than buffer size
+    if (len > MAX_BUFSIZE / 2) {
+      throw new IOException("invalid usage: " + len +
+                            " must be less than " + MAX_BUFSIZE / 2 + ".");
+    }
+
+    // make sure buffer is ready to support the read
+    prepareBuffer(len);
+
+    // get actual count available
+    final int count = (len > moreFile) ? len : moreFile;
+
+    // make sure c is big enough
+    if (c.length < off + count) {
+      throw new IOException("invalid usage: buffer size " + c.length +
+                            " is smaller than " + count + ".");
+    }
+
+    // no count means EOF
+    if (count == 0) {
+      return -1;
+    }
+
+    // read count from buffer
+    for (int i=0; i<count; i++) {
+      c[off + i] = (char)(0xff & buffer[bufferHead + i]);
+    }
+
+    // move the buffer head forward
+    bufferHead += count;
+
+    return count;
+  }
 }
 
