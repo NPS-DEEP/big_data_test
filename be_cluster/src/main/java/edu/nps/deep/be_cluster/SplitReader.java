@@ -18,14 +18,16 @@ import org.apache.spark.api.java.function.Function2;
 import scala.Tuple2;
 */
 
+import java.io.IOException;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.ios.IOUtils;
+import org.apache.hadoop.io.IOUtils;
 
 /**
  * Reader interface for reading char[n] from hadoop file bytes.
@@ -43,7 +45,7 @@ public final class SplitReader extends java.io.Reader {
   private FSDataInputStream in;
 
   // buffer between Hadoop and SplitReader output
-  private final MAX_BUFSIZE = 131072; // 2^17=128KiB
+  private static final int MAX_BUFSIZE = 131072; // 2^17=128KiB
   private long moreFile;
   private long moreSplit;
   private byte[] buffer;
@@ -59,18 +61,19 @@ public final class SplitReader extends java.io.Reader {
   private void openIN() throws IOException, InterruptedException {
 
     // open the input file
-    final Path path = (FileSplit)inputSplit.getPath();
+    final Path path = ((FileSplit)inputSplit).getPath();
     final Configuration configuration = taskAttemptContext.getConfiguration();
     final FileSystem fileSystem = path.getFileSystem(configuration);
     in = fileSystem.open(path);
   }
 
   // length of file
-  private void getFileLen() throws IOException, InterruptedException {
-    final Path path = (FileSplit)inputSplit.getPath();
+  private long getFileLen() throws IOException, InterruptedException {
+    final Path path = ((FileSplit)inputSplit).getPath();
     final Configuration configuration = taskAttemptContext.getConfiguration();
     final FileSystem fileSystem = path.getFileSystem(configuration);
-    long fileLen = fileSystem.getFileStatus(path).getLen();
+    final long fileLen = fileSystem.getFileStatus(path).getLen();
+    return fileLen;
   }
 
   // get a reader compatible with java.io.Reader
@@ -82,7 +85,7 @@ public final class SplitReader extends java.io.Reader {
     SplitReader reader = new SplitReader(split, context);
 
     // get offset to start of split
-    final long start = fileSplit.getStart();
+    final long start = ((FileSplit)reader.inputSplit).getStart();
 
     // open the reader
     reader.openIN();
@@ -91,18 +94,21 @@ public final class SplitReader extends java.io.Reader {
     reader.in.seek(start);
 
     // set initial values
-    reader.moreFile = getFileLen() - start;
+    reader.moreFile = reader.getFileLen() - start;
     if (reader.moreFile < 0) {
       throw new IOException("invalid state");
     }
-    reader.moreSplit = (FileSplit)inputSplit.getLength();
+    reader.moreSplit = ((FileSplit)reader.inputSplit).getLength();
     reader.buffer = new byte[MAX_BUFSIZE];
     reader.bufferHead = MAX_BUFSIZE;
+
+    return reader;
   }
 
   // read into buffer if it is too empty
   private void prepareBuffer(int sizeRequested)
-                               throws IOException, InterruptedException {
+                               throws IOException {
+//                               throws IOException, InterruptedException {
 
     // no action if data is available
     int sizeAvailable = MAX_BUFSIZE - bufferHead;
@@ -128,9 +134,9 @@ public final class SplitReader extends java.io.Reader {
     }
 
     // get count of bytes to read
-    long count = bufferHead;
+    int count = bufferHead;
     if (count > moreFile) {
-      count = moreFile;
+      count = (int)moreFile;
     }
 
     // read count of bytes into buffer
@@ -156,8 +162,10 @@ public final class SplitReader extends java.io.Reader {
   }
 
   // close
-  public void close() throws IOException, InterruptedException {
-    in.close();
+//zz  public void close() throws IOException, InterruptedException {
+  public void close() throws IOException {
+    IOUtils.closeStream(in);
+//    in.close();
   }
 
   // do not support marking
@@ -166,7 +174,8 @@ public final class SplitReader extends java.io.Reader {
   }
 
   public int read(char[] c, int off, int len)
-                      throws IOException, InterruptedException {
+//                      throws IOException, InterruptedException {
+                      throws IOException {
 
     // require a max read size less than buffer size
     if (len > MAX_BUFSIZE / 2) {
@@ -178,7 +187,7 @@ public final class SplitReader extends java.io.Reader {
     prepareBuffer(len);
 
     // get actual count available
-    final int count = (len > moreFile) ? len : moreFile;
+    final int count = (len > moreFile) ? len : (int)moreFile;
 
     // make sure c is big enough
     if (c.length < off + count) {

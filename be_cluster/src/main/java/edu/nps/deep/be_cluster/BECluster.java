@@ -1,7 +1,7 @@
 // based loosely on Spark examples and
 // http://spark.apache.org/docs/latest/programming-guide.html
 
-package edu.nps.deep.spark_byte_count2;
+package edu.nps.deep.be_cluster;
 
 import java.io.IOException;
 import org.apache.hadoop.mapreduce.Job;
@@ -19,7 +19,7 @@ import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import scala.Tuple2;
 
-public final class SparkByteCount2 {
+public final class BECluster {
 
   // ************************************************************
   // ByteHistogram contains a histogram distribution of bytes.
@@ -116,14 +116,15 @@ public final class SparkByteCount2 {
       // value
       long splitDistance = splitReader.splitDistance();
       while (splitDistance > 0) {
-        long count = (C_SIZE > splitDistance) ? C_SIZE : splitDistance;
+        int count = (splitDistance > C_SIZE) ? C_SIZE : (int)splitDistance;
+System.err.println("zzzzzzzzz splitDistance: " + splitDistance + ", count: " + count);
         splitReader.read(c, 0, count);
         byteHistogram.add(c);
         splitDistance -= count;
       }
 
       // done with this partition
-      splitReader.close();
+//      splitReader.close();
       isDone = true;
       return true;
     }
@@ -144,12 +145,10 @@ public final class SparkByteCount2 {
       return (isDone == true) ? 1.0f : 0.0f;
     }
 
-/*
     @Override
     public void close() throws IOException {
       splitReader.close();
     }
-*/
   }
 
   // ************************************************************
@@ -182,7 +181,7 @@ public final class SparkByteCount2 {
   public static void main(String[] args) {
 
     if (args.length != 1) {
-      System.err.println("Usage: SparkByteCount2 <input path>");
+      System.err.println("Usage: BECluster <input path>");
       System.exit(1);
     }
 
@@ -209,7 +208,7 @@ public final class SparkByteCount2 {
 
       // get the hadoop job
       Job hadoopJob = Job.getInstance(
-                       sparkContext.hadoopConfiguration(), "SparkByteCount2");
+                       sparkContext.hadoopConfiguration(), "BECluster");
 
       // get the file system
       FileSystem fileSystem =
