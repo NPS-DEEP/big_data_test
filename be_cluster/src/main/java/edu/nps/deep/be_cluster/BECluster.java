@@ -113,6 +113,7 @@ public final class BECluster {
       // key
       ++splitNumber;
 
+/*
       // value
       while (true) {
         final int count = splitReader.read(c, 0, C_SIZE);
@@ -123,6 +124,20 @@ public final class BECluster {
           throw new IOException("Invalid value: count=0");
         }
         byteHistogram.add(c, count);
+      }
+*/
+
+      // value
+      long splitDistance = splitReader.splitDistance();
+      while (splitDistance > 0) {
+        int count = (splitDistance > C_SIZE) ? C_SIZE : (int)splitDistance;
+        final int countRead = splitReader.read(c, 0, count);
+        if (countRead != count) {
+          throw new IOException("Unexpected count: " + count + ", countRead: " + countRead);
+        }
+
+        byteHistogram.add(c, count);
+        splitDistance -= count;
       }
 
       // done with this partition
@@ -233,9 +248,9 @@ public final class BECluster {
 //        if (++i > 10) {
 //          break;
 //        }
-if (locatedFileStatus.getPath().toString().indexOf("Fedora-Xfce-Live-x86_64-24-1.2.iso") >= 0) {
-continue;
-}
+//if (locatedFileStatus.getPath().toString().indexOf("Fedora-Xfce-Live-x86_64-24-1.2.iso") >= 0) {
+//continue;
+//}
 
         System.out.println("adding " + locatedFileStatus.getLen() +
                   " bytes at path " + locatedFileStatus.getPath().toString());

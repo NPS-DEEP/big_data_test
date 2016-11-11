@@ -54,10 +54,10 @@ task run(overwrite: true, type: Exec, dependsOn: [assemble]) {
 
 task run2(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'
-  args = ["--class","edu.nps.deep.be_cluster.SparkByteCount2", "--master", "yarn", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_cluster/build/libs/be_cluster-${version}.jar", "/user/tjandrze/DEEP/sample/input"]
+  args = ["--class","edu.nps.deep.be_cluster.BECluster", "--master", "yarn", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_cluster/build/libs/be_cluster-${version}.jar", "/user/tjandrze/DEEP/sample/input"]
 }
 
 task run3(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'
-  args = ["--class","edu.nps.deep.be_cluster.SparkByteCount2", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_cluster/build/libs/be_cluster-${version}.jar", "/user/tjandrze/DEEP/input"]
+  args = ["--class","edu.nps.deep.be_cluster.BECluster", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_cluster/build/libs/be_cluster-${version}.jar", "/user/tjandrze/DEEP/input"]
 }

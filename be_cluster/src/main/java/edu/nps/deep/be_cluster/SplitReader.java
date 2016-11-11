@@ -141,16 +141,16 @@ public final class SplitReader extends java.io.Reader {
     // read count of bytes into buffer
     IOUtils.readFully(in, buffer, bufferHead - count, count);
 
-System.out.println("prepareBuffer.readFully: bufferHead: " + bufferHead + ", count: " + count);
+//System.out.println("prepareBuffer.readFully: bufferHead: " + bufferHead + ", count: " + count);
 
     // adjust tracking variables
     moreFile -= count;
     moreSplit -= count; // goes negative when reading beyond split
     bufferHead -= count;
 
-for (int j=bufferHead; j<MAX_BUFSIZE; j++) {
-System.out.println("prepareBuffer.buffer[" + j + "]: " + buffer[j]);
-}
+//for (int j=bufferHead; j<MAX_BUFSIZE; j++) {
+//System.out.println("prepareBuffer.buffer[" + j + "]: " + buffer[j]);
+//}
 
   }
 
@@ -182,8 +182,8 @@ System.out.println("prepareBuffer.buffer[" + j + "]: " + buffer[j]);
   public int read(char[] c, int off, int len)
 //                      throws IOException, InterruptedException {
                       throws IOException {
-System.out.println("stdout: read: off: " + off + ", len: " + len);
-System.err.println("stderr: read: off: " + off + ", len: " + len);
+//System.out.println("stdout: read: off: " + off + ", len: " + len);
+//System.err.println("stderr: read: off: " + off + ", len: " + len);
 
     // require a max read size less than buffer size
     if (len > MAX_BUFSIZE / 2) {
