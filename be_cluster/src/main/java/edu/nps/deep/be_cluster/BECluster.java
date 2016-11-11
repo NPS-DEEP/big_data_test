@@ -31,9 +31,9 @@ public final class BECluster {
       histogram = new long[256];
     }
 
-    public void add(char[] chars) {
-      for (char c : chars) {
-        ++histogram[c];
+    public void add(char[] chars, int count) {
+      for (int i=0; i<count; i++) {
+        ++histogram[chars[i]];
       }
     }
 
@@ -114,17 +114,18 @@ public final class BECluster {
       ++splitNumber;
 
       // value
-      long splitDistance = splitReader.splitDistance();
-      while (splitDistance > 0) {
-        int count = (splitDistance > C_SIZE) ? C_SIZE : (int)splitDistance;
-System.err.println("zzzzzzzzz splitDistance: " + splitDistance + ", count: " + count);
-        splitReader.read(c, 0, count);
-        byteHistogram.add(c);
-        splitDistance -= count;
+      while (true) {
+        final int count = splitReader.read(c, 0, C_SIZE);
+        if (count == -1) {
+          break;
+        }
+        if (count == 0) {
+          throw new IOException("Invalid value: count=0");
+        }
+        byteHistogram.add(c, count);
       }
 
       // done with this partition
-//      splitReader.close();
       isDone = true;
       return true;
     }
@@ -190,6 +191,7 @@ System.err.println("zzzzzzzzz splitDistance: " + splitDistance + ", count: " + c
     sparkConfiguration.setAppName("Spark Byte Count App");
     sparkConfiguration.set("log4j.logger.org.apache.spark.rpc.akka.ErrorMonitor", "FATAL");
     sparkConfiguration.set("log4j.logger.org.apache.spark.scheduler.DAGScheduler", "TRACE");
+    sparkConfiguration.set("yarn.log-aggregation-enable", "true");
     sparkConfiguration.set("fs.hdfs.impl.disable.cache", "true");
     sparkConfiguration.set("spark.app.id", "Spark Byte Count 2 App");
     sparkConfiguration.set("spark.executor.extrajavaoptions", "-XX:+UseConcMarkSweepGC");
@@ -231,6 +233,9 @@ System.err.println("zzzzzzzzz splitDistance: " + splitDistance + ", count: " + c
 //        if (++i > 10) {
 //          break;
 //        }
+if (locatedFileStatus.getPath().toString().indexOf("Fedora-Xfce-Live-x86_64-24-1.2.iso") >= 0) {
+continue;
+}
 
         System.out.println("adding " + locatedFileStatus.getLen() +
                   " bytes at path " + locatedFileStatus.getPath().toString());

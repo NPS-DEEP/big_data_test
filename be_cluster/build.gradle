@@ -42,9 +42,14 @@ dependencies {
   provided "org.apache.spark:spark-core_2.11:${sparkVersion}"
 }
 
+//task run(overwrite: true, type: Exec, dependsOn: [assemble]) {
+//  executable = 'spark-submit'
+//  args = ["--class","edu.nps.deep.be_cluster.BECluster", "--master", "yarn", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/big_data_test/be_cluster/build/libs/be_cluster-${version}.jar", "input"]
+//}
+
 task run(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'
-  args = ["--class","edu.nps.deep.be_cluster.BECluster", "--master", "yarn", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/big_data_test/be_cluster/build/libs/be_cluster-${version}.jar", "input"]
+  args = ["--class","edu.nps.deep.be_cluster.BECluster", "--master", "yarn", "/home/bdallen/big_data_test/be_cluster/build/libs/be_cluster-${version}.jar", "input"]
 }
 
 task run2(overwrite: true, type: Exec, dependsOn: [assemble]) {

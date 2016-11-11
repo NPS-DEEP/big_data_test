@@ -118,7 +118,7 @@ public final class SplitReader extends java.io.Reader {
 
     // no action if at EOF
     if (moreFile == 0) {
-      System.err.println("Warn: SplitReader.prepareBuffer when moreFile is 0");
+      System.err.println("Note: no prepareBuffer read because moreFile is 0");
       return;
     }
 
@@ -127,25 +127,31 @@ public final class SplitReader extends java.io.Reader {
       throw new IOException("invalid state");
     }
 
-    // shift unread bytes from end to beginning of buffer
-    int sizeUnread = MAX_BUFSIZE - bufferHead;
-    for (int i=0; i<sizeUnread; i++) {
-      buffer[i] = buffer[bufferHead + i];
-    }
-
     // get count of bytes to read
     int count = bufferHead;
     if (count > moreFile) {
       count = (int)moreFile;
     }
 
+    // shift unread bytes from end to left of bytes to read
+    for (int i=bufferHead; i<MAX_BUFSIZE; i++) {
+      buffer[i-count] = buffer[i];
+    }
+
     // read count of bytes into buffer
-    IOUtils.readFully(in, buffer, sizeUnread, count);
+    IOUtils.readFully(in, buffer, bufferHead - count, count);
+
+System.out.println("prepareBuffer.readFully: bufferHead: " + bufferHead + ", count: " + count);
 
     // adjust tracking variables
     moreFile -= count;
     moreSplit -= count; // goes negative when reading beyond split
-    bufferHead = 0;
+    bufferHead -= count;
+
+for (int j=bufferHead; j<MAX_BUFSIZE; j++) {
+System.out.println("prepareBuffer.buffer[" + j + "]: " + buffer[j]);
+}
+
   }
 
   // ************************************************************
@@ -176,6 +182,8 @@ public final class SplitReader extends java.io.Reader {
   public int read(char[] c, int off, int len)
 //                      throws IOException, InterruptedException {
                       throws IOException {
+System.out.println("stdout: read: off: " + off + ", len: " + len);
+System.err.println("stderr: read: off: " + off + ", len: " + len);
 
     // require a max read size less than buffer size
     if (len > MAX_BUFSIZE / 2) {
@@ -186,14 +194,9 @@ public final class SplitReader extends java.io.Reader {
     // make sure buffer is ready to support the read
     prepareBuffer(len);
 
-    // get actual count available
-    final int count = (len > moreFile) ? len : (int)moreFile;
-
-    // make sure c is big enough
-    if (c.length < off + count) {
-      throw new IOException("invalid usage: buffer size " + c.length +
-                            " is smaller than " + count + ".");
-    }
+    // get less than len if at EOF
+    final int count = (len < MAX_BUFSIZE - bufferHead) ? len :
+                                               MAX_BUFSIZE - bufferHead;
 
     // no count means EOF
     if (count == 0) {
