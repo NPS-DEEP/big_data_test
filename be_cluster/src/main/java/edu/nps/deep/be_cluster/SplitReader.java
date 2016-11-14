@@ -128,25 +128,25 @@ public final class SplitReader extends java.io.Reader {
     }
 
     // get count of bytes to read
-    int count = bufferHead;
-    if (count > moreFile) {
-      count = (int)moreFile;
+    int countToRead = bufferHead;
+    if (countToRead > moreFile) {
+      countToRead = (int)moreFile;
     }
 
     // shift unread bytes from end to left of bytes to read
     for (int i=bufferHead; i<MAX_BUFSIZE; i++) {
-      buffer[i-count] = buffer[i];
+      buffer[i-countToRead] = buffer[i];
     }
 
     // read count of bytes into buffer
-    IOUtils.readFully(in, buffer, bufferHead - count, count);
+    IOUtils.readFully(in, buffer, MAX_BUFSIZE - countToRead, countToRead);
 
-//System.out.println("prepareBuffer.readFully: bufferHead: " + bufferHead + ", count: " + count);
+//System.out.println("prepareBuffer.readFully: bufferHead: " + bufferHead + ", countToRead: " + countToRead);
 
     // adjust tracking variables
-    moreFile -= count;
-    moreSplit -= count; // goes negative when reading beyond split
-    bufferHead -= count;
+    moreFile -= countToRead;
+    moreSplit -= countToRead; // goes negative when reading beyond split
+    bufferHead -= countToRead;
 
 //for (int j=bufferHead; j<MAX_BUFSIZE; j++) {
 //System.out.println("prepareBuffer.buffer[" + j + "]: " + buffer[j]);
