@@ -4,6 +4,7 @@
 *.log
 .gradle
 build/
+*temp_total_textfile
 bytecount/byte_count_output/
 
 # sbt specific
