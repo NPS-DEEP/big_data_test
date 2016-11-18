@@ -4,6 +4,13 @@
 package edu.nps.deep.spark_byte_count;
 
 import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayDeque;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+import java.util.concurrent.ExecutionException;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -15,6 +22,8 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.function.VoidFunction;
+import org.apache.spark.api.java.JavaFutureAction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import scala.Tuple2;
@@ -90,7 +99,6 @@ public final class SparkByteCount {
     private org.apache.hadoop.mapreduce.TaskAttemptContext taskAttemptContext;
 
     private ByteHistogram byteHistogram = new ByteHistogram();
-    private long splitNumber = 0;
     private boolean isDone = false;
 
     @Override
@@ -112,7 +120,7 @@ public final class SparkByteCount {
       }
 
       // key
-      ++splitNumber;
+      // use Long(1)
 
       // value
 
@@ -165,7 +173,7 @@ System.out.println("SplitFileRecordReader.initialize path(zzzz3): " +
 
     @Override
     public Long getCurrentKey() throws IOException, InterruptedException {
-      return new Long(splitNumber);
+      return new Long(1);
     }
 
     @Override
@@ -229,20 +237,20 @@ System.out.println("SplitFileRecordReader.initialize path(zzzz3): " +
     sparkConfiguration.set("spark.executor.extrajavaoptions", "-XX:+UseConcMarkSweepGC");
     sparkConfiguration.set("spark.dynamicAllocation.maxExecutors", "10000");
 
-// no, we will have multiple keys:    sparkConfiguration.set("spark.default.parallelism", "1");
-    sparkConfiguration.set("spark.default.parallelism", "64");
+//// no, we will have multiple keys:    sparkConfiguration.set("spark.default.parallelism", "1");
+//    sparkConfiguration.set("spark.default.parallelism", "64");
+//    sparkConfiguration.set("spark.driver.maxResultSize", "8g"); // default 1g, may use 2.5g
 
-    sparkConfiguration.set("spark.driver.maxResultSize", "8g"); // default 1g, may use 2.5g
+    // future actions for each job
+    ArrayDeque<JavaFutureAction<java.util.List<Tuple2<Long, ByteHistogram>>>>
+                  javaFutureActions = new ArrayDeque<JavaFutureAction<
+                       java.util.List<Tuple2<Long, ByteHistogram>>>>();
 
     // set up the Spark context
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
 
     // several hadoop functions return IOException
     try {
-
-      // get the hadoop job
-      Job hadoopJob = Job.getInstance(
-                       sparkContext.hadoopConfiguration(), "SparkByteCount3");
 
       // get the file system
       FileSystem fileSystem =
@@ -266,59 +274,73 @@ System.out.println("SplitFileRecordReader.initialize path(zzzz3): " +
 //          break;
 //        }
 
+        // show file being added
         System.out.println("adding " + locatedFileStatus.getLen() +
                   " bytes at path " + locatedFileStatus.getPath().toString());
 
+        // get a hadoop job
+        Job hadoopJob = Job.getInstance(sparkContext.hadoopConfiguration(),
+                    "Job for file " + locatedFileStatus.getPath().toString());
 
-        // add this file
-        org.apache.hadoop.mapreduce.lib.input.FileInputFormat.addInputPath(
-                                   hadoopJob, locatedFileStatus.getPath());
+        // add this file to the job
+        FileInputFormat.addInputPath(hadoopJob, locatedFileStatus.getPath());
 
-        totalBytes += locatedFileStatus.getLen();
-      }
-      System.out.println("total bytes added: " + totalBytes);
-
-      // create the RDD of byte histograms for splits
-      JavaPairRDD<Long, ByteHistogram> rdd = sparkContext.newAPIHadoopRDD(
+        // define the RDD of byte histograms for splits for this job
+        JavaPairRDD<Long, ByteHistogram> rdd = sparkContext.newAPIHadoopRDD(
                hadoopJob.getConfiguration(),        // configuration
                SplitFileInputFormat.class,          // F
                Long.class,                          // K
                ByteHistogram.class);                // V
 
-      // reduce RDD to total result
-      Tuple2<Long, ByteHistogram> histogramTotalTuple = rdd.reduce(
-            new Function2<Tuple2<Long, ByteHistogram>,
-                         Tuple2<Long, ByteHistogram>,
-                         Tuple2<Long, ByteHistogram>>() {
-        @Override
-        public Tuple2<Long, ByteHistogram> call(
-                                Tuple2<Long, ByteHistogram> v1,
-                                Tuple2<Long, ByteHistogram> v2) {
+        // define the reduced RDD for this job
+        JavaPairRDD<Long, ByteHistogram> rdd2 = rdd.reduceByKey(
+            new Function2< ByteHistogram, ByteHistogram, ByteHistogram>() {
+          @Override
+          public ByteHistogram call(ByteHistogram v1, ByteHistogram v2) {
 
-          // add second byteHistogram to first
-          v1._2().add(v2._2());
-          return new Tuple2<Long, ByteHistogram>(new Long(1), v1._2());
+            // add second byteHistogram to first
+            v1.add(v2);
+            return v1;
+          }
+        });
+
+        // create the JavaFutureAction for this job
+        JavaFutureAction<java.util.List<Tuple2<Long, ByteHistogram>>> f =
+                                                        rdd2.collectAsync();
+        javaFutureActions.add(f);
+      }
+
+      // show the total bytes being processed
+      System.out.println("total bytes added: " + totalBytes);
+
+      // wait for all futures to finish, totaling as jobs complete
+      ByteHistogram total = new ByteHistogram();
+      while (javaFutureActions.size() != 0) {
+        JavaFutureAction<java.util.List<Tuple2<Long, ByteHistogram>>> j =
+                                                   javaFutureActions.remove();
+        java.util.List<Tuple2<Long, ByteHistogram>> list = j.get();
+        if (list.size() != 1) {
+          throw new RuntimeException("bad");
         }
-      });
+        total.add(list.get(0)._2());
+      }
 
       // show histogram total
-      System.out.println("Histogram total:\n" +
-                         histogramTotalTuple._2());
+      System.out.println("Histogram total:\n" + total);
 
       // save total in text file
       java.io.File totalFile = new java.io.File("temp_total_textfile");
       try {
         java.io.BufferedWriter out = new java.io.BufferedWriter(new java.io.FileWriter(totalFile));
-        out.write("Histogram total:\n" +
-                         histogramTotalTuple._2());
+        out.write("Histogram total:\n" + total);
         out.close();
       } catch (Exception e) {
-        System.out.println("Error: Failure saving " + totalFile.toString());
+        throw new RuntimeException(e);
       }
 
-    }  catch (IOException e) {
-      System.err.println("Error starting main: " + e);
-      System.exit(1);
+    }  catch (IOException|InterruptedException|ExecutionException e) {
+      throw new RuntimeException(e);
+//      System.exit(1);
     }
   }
 }
