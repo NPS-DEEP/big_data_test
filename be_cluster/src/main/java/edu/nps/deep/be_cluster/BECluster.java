@@ -4,6 +4,7 @@
 package edu.nps.deep.be_cluster;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -17,7 +18,10 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
+import org.apache.spark.api.java.function.VoidFunction;
 import scala.Tuple2;
+
+//zz import EmailReader;
 
 public final class BECluster {
 
@@ -37,7 +41,7 @@ public final class BECluster {
       }
     }
 
-    public void add(ByteHistogram other) { 
+    public void add(ByteHistogram other) {
       for (int i = 0; i< histogram.length; i++) {
         histogram[i] += other.histogram[i];
       }
@@ -79,103 +83,14 @@ public final class BECluster {
   }
 
   // ************************************************************
-  // SplitFileReacordReader reads the requested split and returns ByteHistogram.
-  // ref. https://github.com/apache/mahout/blob/master/integration/src/main/java/org/apache/mahout/text/wikipedia/XmlInputFormat.java
-  // ************************************************************
-  static class SplitFileRecordReader
-                            extends org.apache.hadoop.mapreduce.RecordReader<
-                            Long, ByteHistogram> {
-
-    private SplitReader splitReader;
-    private ByteHistogram byteHistogram = new ByteHistogram();
-    private long splitNumber = 0;
-    private boolean isDone = false;
-
-    @Override
-    public void initialize(
-                 org.apache.hadoop.mapreduce.InputSplit split,
-                 org.apache.hadoop.mapreduce.TaskAttemptContext context)
-                        throws IOException, InterruptedException {
-
-      splitReader = SplitReader.getReader(split, context);
-    }
-
-    @Override
-    public boolean nextKeyValue() throws IOException, InterruptedException {
-      int C_SIZE = 50000;
-      char[] c = new char[C_SIZE];
-
-      // done when no more bytes to read in split
-      if (isDone) {
-        return false;
-      }
-
-      // key
-      ++splitNumber;
-
-/*
-      // value
-      while (true) {
-        final int count = splitReader.read(c, 0, C_SIZE);
-        if (count == -1) {
-          break;
-        }
-        if (count == 0) {
-          throw new IOException("Invalid value: count=0");
-        }
-        byteHistogram.add(c, count);
-      }
-*/
-
-      // value
-      long splitDistance = splitReader.splitDistance();
-      while (splitDistance > 0) {
-        int count = (splitDistance > C_SIZE) ? C_SIZE : (int)splitDistance;
-        final int countRead = splitReader.read(c, 0, count);
-        if (countRead != count) {
-          throw new IOException("Unexpected count: " + count + ", countRead: " + countRead);
-        }
-
-        byteHistogram.add(c, count);
-        splitDistance -= count;
-      }
-
-      // done with this partition
-      isDone = true;
-      return true;
-    }
-
-    @Override
-    public Long getCurrentKey() throws IOException, InterruptedException {
-      return new Long(splitNumber);
-    }
-
-    @Override
-    public ByteHistogram getCurrentValue()
-                                  throws IOException, InterruptedException {
-      return byteHistogram;
-    }
-
-    @Override
-    public float getProgress() throws IOException {
-      return (isDone == true) ? 1.0f : 0.0f;
-    }
-
-    @Override
-    public void close() throws IOException {
-      splitReader.close();
-    }
-  }
-
-  // ************************************************************
   // SplitFileInputFormat implements createRecordReader which returns
-  // SplitFileRecordReader for calculating ByteHistogram for one split.
+  // EmailReader for extracting email addresses from one split.
   // ************************************************************
   public static class SplitFileInputFormat
         extends org.apache.hadoop.mapreduce.lib.input.FileInputFormat<
                          Long, ByteHistogram> {
 
-    // createRecordReader returns SplitFileRecordReader
+    // createRecordReader returns EmailReader
     @Override
     public org.apache.hadoop.mapreduce.RecordReader<
                          Long, ByteHistogram>
@@ -184,9 +99,33 @@ public final class BECluster {
                  org.apache.hadoop.mapreduce.TaskAttemptContext context)
                        throws IOException, InterruptedException {
 
-      SplitFileRecordReader reader = new SplitFileRecordReader();
+      EmailReader reader = new EmailReader();
       reader.initialize(split, context);
       return reader;
+    }
+  }
+
+  // ************************************************************
+  // feature recorder VoidFunction
+  // ************************************************************
+  public static class FeatureRecorderVoidFunction
+            implements VoidFunction<ArrayDeque<ExtractedFeature>> {
+
+    private java.io.BufferedWriter out;
+
+    public FeatureRecorderVoidFunction(java.io.File filename) {
+      try {
+        out = new java.io.BufferedWriter(new Java.io.FileWriter(filename));
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    public void call(ArrayDeque<ExtractedFeature> features) {
+      while (features.size != 0) {
+        ExtractedFeature feature = features.remove();
+        out.write(feature.forensicPath + "\t" + feature.featureBytes);
+      }
     }
   }
 
@@ -217,15 +156,20 @@ public final class BECluster {
 
     sparkConfiguration.set("spark.driver.maxResultSize", "8g"); // default 1g, may use 2.5g
 
+    // create the local output directory as output+timestamp
+    File localOutputDirectory = new File("output" + new SimpleDateFormat(
+                          "yyyy-MM-dd hh-mm-ss'.tsv'").format(new Date()));
+    outputDirectory.mkdir();
+
+    // future actions for each job
+    ArrayDeque<JavaFutureAction<Void>> javaFutureActions = new
+                                  ArrayDeque<JavaFutureAction<Void>>();
+
     // set up the Spark context
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
 
     // several hadoop functions return IOException
     try {
-
-      // get the hadoop job
-      Job hadoopJob = Job.getInstance(
-                       sparkContext.hadoopConfiguration(), "BECluster");
 
       // get the file system
       FileSystem fileSystem =
@@ -252,59 +196,60 @@ public final class BECluster {
 //continue;
 //}
 
+        // show file being added
         System.out.println("adding " + locatedFileStatus.getLen() +
                   " bytes at path " + locatedFileStatus.getPath().toString());
 
+        // get a hadoop job
+        Job hadoopJob = Job.getInstance(sparkContext.hadoopConfiguration(),
+                    "Job for file " + locatedFileStatus.getPath().toString());
 
-        // add this file
-        org.apache.hadoop.mapreduce.lib.input.FileInputFormat.addInputPath(
-                                   hadoopJob, locatedFileStatus.getPath());
+        // add this file to the job
+        FileInputFormat.addInputPath(hadoopJob, locatedFileStatus.getPath());
 
-        totalBytes += locatedFileStatus.getLen();
+        // define the RDD of byte histograms for splits for this job
+        JavaPairRDD<Long, ByteHistogram> rdd = sparkContext.newAPIHadoopRDD(
+               hadoopJob.getConfiguration(),         // configuration
+               SplitFileInputFormat.class,           // F
+               Long.class,                           // K
+//               ArrayDeque<ExtractedFeature>.class);  // V
+               ArrayDeque.class);  // V
+
+        // create the recorder that will write this RDD to a file
+        java.io.File featureFile = new File(localOutputDirectory,
+                               locatedFileStatus.getPath().getName());
+        FeatureRecorderVoidFunction recorder =
+                               new FeatureRecorderVoidFunction(filename);
+
+        // create the JavaFutureAction for this job
+        JavaFutureAction<Void> f = rdd.foreachAsync(recorder);
+        javaFutureActions.add(f);
       }
+
+      // show the total bytes being processed
       System.out.println("total bytes added: " + totalBytes);
 
-      // create the RDD of byte histograms for splits
-      JavaPairRDD<Long, ByteHistogram> rdd = sparkContext.newAPIHadoopRDD(
-               hadoopJob.getConfiguration(),        // configuration
-               SplitFileInputFormat.class,          // F
-               Long.class,                          // K
-               ByteHistogram.class);                // V
+      // wait for all futures to finish.
+      while (javaFutureActions.size() != 0) {
+        JavaFutureAction<Void> f = javaFutureActions.remove();
+      }
 
-      // reduce RDD to total result
-      Tuple2<Long, ByteHistogram> histogramTotalTuple = rdd.reduce(
-            new Function2<Tuple2<Long, ByteHistogram>,
-                         Tuple2<Long, ByteHistogram>,
-                         Tuple2<Long, ByteHistogram>>() {
-        @Override
-        public Tuple2<Long, ByteHistogram> call(
-                                Tuple2<Long, ByteHistogram> v1,
-                                Tuple2<Long, ByteHistogram> v2) {
-
-          // add second byteHistogram to first
-          v1._2().add(v2._2());
-          return new Tuple2<Long, ByteHistogram>(new Long(1), v1._2());
-        }
-      });
-
-      // show histogram total
-      System.out.println("Histogram total:\n" +
-                         histogramTotalTuple._2());
+      // Done
+      System.out.println("Done.");
 
       // save total in text file
       java.io.File totalFile = new java.io.File("temp_total_textfile");
       try {
         java.io.BufferedWriter out = new java.io.BufferedWriter(new java.io.FileWriter(totalFile));
-        out.write("Histogram total:\n" +
-                         histogramTotalTuple._2());
+        out.write("Histogram total:\n" + total);
         out.close();
       } catch (Exception e) {
-        System.out.println("Error: Failure saving " + totalFile.toString());
+        throw new RuntimeException(e);
       }
 
-    }  catch (IOException e) {
-      System.err.println("Error starting main: " + e);
-      System.exit(1);
+    }  catch (IOException|InterruptedException|ExecutionException e) {
+      throw new RuntimeException(e);
+//      System.exit(1);
     }
   }
 }

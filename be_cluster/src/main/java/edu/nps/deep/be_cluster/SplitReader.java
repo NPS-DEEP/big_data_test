@@ -67,13 +67,25 @@ public final class SplitReader extends java.io.Reader {
     in = fileSystem.open(path);
   }
 
-  // length of file
-  private long getFileLen() throws IOException, InterruptedException {
+  // size of file
+  public long getFileSize() throws IOException, InterruptedException {
     final Path path = ((FileSplit)inputSplit).getPath();
     final Configuration configuration = taskAttemptContext.getConfiguration();
     final FileSystem fileSystem = path.getFileSystem(configuration);
-    final long fileLen = fileSystem.getFileStatus(path).getLen();
-    return fileLen;
+    final long fileSize = fileSystem.getFileStatus(path).getLen();
+    return fileSize;
+  }
+
+  // offset to the start of this split
+  public long getSplitOffset() throws IOException, InterruptedException {
+    final long splitStart = ((FileSplit)inputSplit).getStart();
+    return splitStart;
+  }
+
+  // size of this split
+  public long getSplitSize() throws IOException, InterruptedException {
+    final long splitSize = ((FileSplit)inputSplit).getLength();
+    return splitSize;
   }
 
   // get a reader compatible with java.io.Reader
@@ -84,17 +96,17 @@ public final class SplitReader extends java.io.Reader {
     // create the reader to return
     SplitReader reader = new SplitReader(split, context);
 
-    // get offset to start of split
-    final long start = ((FileSplit)reader.inputSplit).getStart();
-
     // open the reader
     reader.openIN();
+
+    // get offset to start of split
+    final long start = getSplitOffset();
 
     // seek to the split
     reader.in.seek(start);
 
     // set initial values
-    reader.moreFile = reader.getFileLen() - start;
+    reader.moreFile = reader.getFileSize() - start;
     if (reader.moreFile < 0) {
       throw new IOException("invalid state");
     }
