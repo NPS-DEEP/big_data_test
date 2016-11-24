@@ -17,7 +17,11 @@ $(JFLEX_JAR):
 	wget $(JFLEX_URL)
 	unzip jflex-1.6.1.zip
 
-$(JAVA_SRC)/BinaryLexer.java: $(JAVA_SRC)BinaryLexer.flex $(JFLEX_JAR)
-	java -cp $(JFLEX_JAR) -Xmx1000m JFlex.main \
+$(JAVA_SRC)/BinaryLexer.java: $(JAVA_SRC)/BinaryLexer.flex $(JFLEX_JAR)
+	java -Xmx1000m -jar $(JFLEX_JAR) \
                         -d $(JAVA_SRC) $(JAVA_SRC)/BinaryLexer.flex
+
+#$(JAVA_SRC)/BinaryLexer.java: $(JAVA_SRC)/BinaryLexer.flex $(JFLEX_JAR)
+#	java -cp $(JFLEX_JAR) -Xmx1000m JFlex.Main \
+#                        -d $(JAVA_SRC) $(JAVA_SRC)/BinaryLexer.flex
 

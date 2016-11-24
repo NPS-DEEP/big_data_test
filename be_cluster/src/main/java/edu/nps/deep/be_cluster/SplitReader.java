@@ -100,7 +100,7 @@ public final class SplitReader extends java.io.Reader {
     reader.openIN();
 
     // get offset to start of split
-    final long start = getSplitOffset();
+    final long start = reader.getSplitOffset();
 
     // seek to the split
     reader.in.seek(start);

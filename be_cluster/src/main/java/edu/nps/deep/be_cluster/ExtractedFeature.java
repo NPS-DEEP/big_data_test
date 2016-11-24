@@ -11,11 +11,11 @@ public final class ExtractedFeature {
 
   public ExtractedFeature(String path, String bytes) {
     forensicPath = path;
-    featuerBytes = bytes;
+    featureBytes = bytes;
   }
 
   public String toString() {
-    return path + ", '" + featureBytes + "'";
+    return forensicPath + ", '" + featureBytes + "'";
   }
 }
 

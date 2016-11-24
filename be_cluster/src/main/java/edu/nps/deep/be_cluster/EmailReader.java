@@ -26,12 +26,11 @@ import scala.Tuple2;
  */
 public final class EmailReader
                          extends org.apache.hadoop.mapreduce.RecordReader<
-                         String, ExtractedFeature> {
+                         Long, ArrayDeque<ExtractedFeature>> {
 
   private ArrayDeque<ExtractedFeature> features;
   private boolean isDone = false;
-
-
+  private SplitReader splitReader;
 
 //  private ArrayDeque<ExtractedFeature> features = new
 //                                  ArrayDeque<ExtractedFeature>();
@@ -57,13 +56,14 @@ public final class EmailReader
     }
 
     // parse the whole split and capture all email features
-    BinaryLexer l = new BinaryLexer(splitReader);
+    BinaryLexer l = new BinaryLexer(splitReader,
+              splitReader.getSplitOffset(), splitReader.getSplitSize());
     do {
       l.yylex();
     } while (!l.at_eof());
 
     // done if no features found
-    if (l.features.length() == 0) {
+    if (l.features.size() == 0) {
       return false;
     }
 
@@ -91,7 +91,9 @@ public final class EmailReader
 
   @Override
   public void close() throws IOException {
-    splitReader.close();
+    if (splitReader != null) {
+      splitReader.close();
+    }
   }
 }
 

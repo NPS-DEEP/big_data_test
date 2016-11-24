@@ -4,7 +4,10 @@
 package edu.nps.deep.be_cluster;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 import java.util.ArrayDeque;
+import java.util.Date;
+import java.text.SimpleDateFormat;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -13,6 +16,7 @@ import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
 import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaFutureAction;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -26,79 +30,23 @@ import scala.Tuple2;
 public final class BECluster {
 
   // ************************************************************
-  // ByteHistogram contains a histogram distribution of bytes.
-  // ************************************************************
-  static class ByteHistogram implements java.io.Serializable {
-    public long[] histogram = new long[256];
-
-    public ByteHistogram() {
-      histogram = new long[256];
-    }
-
-    public void add(char[] chars, int count) {
-      for (int i=0; i<count; i++) {
-        ++histogram[chars[i]];
-      }
-    }
-
-    public void add(ByteHistogram other) {
-      for (int i = 0; i< histogram.length; i++) {
-        histogram[i] += other.histogram[i];
-      }
-    }
-
-    public String toString() {
-      StringBuilder b = new StringBuilder();
-      long total = 0;
-      for (int i=0; i<256; i++) {
-        b.append(i);
-        b.append(" ");
-        b.append(histogram[i]);
-        b.append(" ");
-        total += histogram[i];
-      }
-      b.append("\n");
-      b.append("total: ");
-      b.append(total);
-      b.append("\n");
-      return b.toString();
-    }
-
-/*
-    public String toString() {
-      StringBuilder b = new StringBuilder();
-      long total = 0;
-      for (int i=0; i<256; i++) {
-        b.append(i);
-        b.append(" ");
-        b.append(histogram[i]);
-        b.append("\n");
-        total += histogram[i];
-      }
-      b.append("total: ");
-      b.append(total);
-      return b.toString();
-    }
-*/
-  }
-
-  // ************************************************************
   // SplitFileInputFormat implements createRecordReader which returns
   // EmailReader for extracting email addresses from one split.
   // ************************************************************
   public static class SplitFileInputFormat
         extends org.apache.hadoop.mapreduce.lib.input.FileInputFormat<
-                         Long, ByteHistogram> {
+                         Long, ArrayDeque<ExtractedFeature>> {
 
     // createRecordReader returns EmailReader
     @Override
     public org.apache.hadoop.mapreduce.RecordReader<
-                         Long, ByteHistogram>
+                         Long, ArrayDeque<ExtractedFeature>>
            createRecordReader(
                  org.apache.hadoop.mapreduce.InputSplit split,
                  org.apache.hadoop.mapreduce.TaskAttemptContext context)
                        throws IOException, InterruptedException {
 
+//      org.apache.hadoop.mapreduce.RecordReader<Long, ArrayDeque<ExtractedFeature>> reader = new EmailReader();
       EmailReader reader = new EmailReader();
       reader.initialize(split, context);
       return reader;
@@ -113,16 +61,16 @@ public final class BECluster {
 
     private java.io.BufferedWriter out;
 
-    public FeatureRecorderVoidFunction(java.io.File filename) {
+    public FeatureRecorderVoidFunction(java.io.File featureFile) {
       try {
-        out = new java.io.BufferedWriter(new Java.io.FileWriter(filename));
+        out = new java.io.BufferedWriter(new java.io.FileWriter(featureFile));
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
     }
 
     public void call(ArrayDeque<ExtractedFeature> features) {
-      while (features.size != 0) {
+      while (features.size() != 0) {
         ExtractedFeature feature = features.remove();
         out.write(feature.forensicPath + "\t" + feature.featureBytes);
       }
@@ -157,9 +105,9 @@ public final class BECluster {
     sparkConfiguration.set("spark.driver.maxResultSize", "8g"); // default 1g, may use 2.5g
 
     // create the local output directory as output+timestamp
-    File localOutputDirectory = new File("output" + new SimpleDateFormat(
+    java.io.File localOutputDirectory = new java.io.File("output" + new SimpleDateFormat(
                           "yyyy-MM-dd hh-mm-ss'.tsv'").format(new Date()));
-    outputDirectory.mkdir();
+    localOutputDirectory.mkdir();
 
     // future actions for each job
     ArrayDeque<JavaFutureAction<Void>> javaFutureActions = new
@@ -208,18 +156,18 @@ public final class BECluster {
         FileInputFormat.addInputPath(hadoopJob, locatedFileStatus.getPath());
 
         // define the RDD of byte histograms for splits for this job
-        JavaPairRDD<Long, ByteHistogram> rdd = sparkContext.newAPIHadoopRDD(
+        JavaPairRDD<Long, ArrayDeque<ExtractedFeature>> rdd = sparkContext.newAPIHadoopRDD(
                hadoopJob.getConfiguration(),         // configuration
                SplitFileInputFormat.class,           // F
                Long.class,                           // K
 //               ArrayDeque<ExtractedFeature>.class);  // V
                ArrayDeque.class);  // V
 
-        // create the recorder that will write this RDD to a file
-        java.io.File featureFile = new File(localOutputDirectory,
+        // create the recorder that will write this RDD to a local file
+        java.io.File featureFile = new java.io.File(localOutputDirectory,
                                locatedFileStatus.getPath().getName());
         FeatureRecorderVoidFunction recorder =
-                               new FeatureRecorderVoidFunction(filename);
+                               new FeatureRecorderVoidFunction(featureFile);
 
         // create the JavaFutureAction for this job
         JavaFutureAction<Void> f = rdd.foreachAsync(recorder);
@@ -236,16 +184,6 @@ public final class BECluster {
 
       // Done
       System.out.println("Done.");
-
-      // save total in text file
-      java.io.File totalFile = new java.io.File("temp_total_textfile");
-      try {
-        java.io.BufferedWriter out = new java.io.BufferedWriter(new java.io.FileWriter(totalFile));
-        out.write("Histogram total:\n" + total);
-        out.close();
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
 
     }  catch (IOException|InterruptedException|ExecutionException e) {
       throw new RuntimeException(e);
