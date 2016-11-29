@@ -4,9 +4,10 @@
 package edu.nps.deep.be_cluster;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.concurrent.ExecutionException;
-import java.util.ArrayDeque;
 import java.util.Date;
+import java.util.ArrayDeque;
 import java.text.SimpleDateFormat;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.fs.FileSystem;
@@ -25,8 +26,6 @@ import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.VoidFunction;
 import scala.Tuple2;
 
-//zz import EmailReader;
-
 public final class BECluster {
 
   // ************************************************************
@@ -35,18 +34,17 @@ public final class BECluster {
   // ************************************************************
   public static class SplitFileInputFormat
         extends org.apache.hadoop.mapreduce.lib.input.FileInputFormat<
-                         Long, ArrayDeque<ExtractedFeature>> {
+                         Long, Features> {
 
     // createRecordReader returns EmailReader
     @Override
-    public org.apache.hadoop.mapreduce.RecordReader<
-                         Long, ArrayDeque<ExtractedFeature>>
+    public org.apache.hadoop.mapreduce.RecordReader<Long, Features>
            createRecordReader(
                  org.apache.hadoop.mapreduce.InputSplit split,
                  org.apache.hadoop.mapreduce.TaskAttemptContext context)
                        throws IOException, InterruptedException {
 
-//      org.apache.hadoop.mapreduce.RecordReader<Long, ArrayDeque<ExtractedFeature>> reader = new EmailReader();
+//zz      org.apache.hadoop.mapreduce.RecordReader<Long, Features> reader = new EmailReader();
       EmailReader reader = new EmailReader();
       reader.initialize(split, context);
       return reader;
@@ -54,10 +52,30 @@ public final class BECluster {
   }
 
   // ************************************************************
+  // SplitFileOutputFormat implements getRecordWriter which returns
+  // RecordWriter FeatureFileRecordWriter
+  // ************************************************************
+  public static class SplitFileOutputFormat
+        extends org.apache.hadoop.mapreduce.lib.output.FileOutputFormat<
+                         Long, Features> {
+
+    // get the feature file record writer
+    @Override
+    public org.apache.hadoop.mapreduce.RecordWriter<Long, Features>
+           getRecordWriter(
+                 org.apache.hadoop.mapreduce.TaskAttemptContext context)
+                       throws IOException, InterruptedException {
+
+      FeatureFileRecordWriter writer = new FeatureFileRecordWriter();
+      return writer;
+    }
+  }
+
+  // ************************************************************
   // feature recorder VoidFunction
   // ************************************************************
   public static class FeatureRecorderVoidFunction
-            implements VoidFunction<ArrayDeque<ExtractedFeature>> {
+         implements VoidFunction<Tuple2<Long, Features>> {
 
     private java.io.BufferedWriter out;
 
@@ -69,9 +87,9 @@ public final class BECluster {
       }
     }
 
-    public void call(ArrayDeque<ExtractedFeature> features) {
-      while (features.size() != 0) {
-        ExtractedFeature feature = features.remove();
+    public void call(Tuple2<Long, Features> tupleFeatures) throws IOException {
+      while (tupleFeatures._2().size() != 0) {
+        Feature feature = tupleFeatures._2().remove();
         out.write(feature.forensicPath + "\t" + feature.featureBytes);
       }
     }
@@ -108,10 +126,6 @@ public final class BECluster {
     java.io.File localOutputDirectory = new java.io.File("output" + new SimpleDateFormat(
                           "yyyy-MM-dd hh-mm-ss'.tsv'").format(new Date()));
     localOutputDirectory.mkdir();
-
-    // future actions for each job
-    ArrayDeque<JavaFutureAction<Void>> javaFutureActions = new
-                                  ArrayDeque<JavaFutureAction<Void>>();
 
     // set up the Spark context
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
@@ -156,36 +170,32 @@ public final class BECluster {
         FileInputFormat.addInputPath(hadoopJob, locatedFileStatus.getPath());
 
         // define the RDD of byte histograms for splits for this job
-        JavaPairRDD<Long, ArrayDeque<ExtractedFeature>> rdd = sparkContext.newAPIHadoopRDD(
+        JavaPairRDD<Long, Features> rdd = sparkContext.newAPIHadoopRDD(
                hadoopJob.getConfiguration(),         // configuration
                SplitFileInputFormat.class,           // F
                Long.class,                           // K
-//               ArrayDeque<ExtractedFeature>.class);  // V
-               ArrayDeque.class);  // V
+               Features.class);                      // V
 
-        // create the recorder that will write this RDD to a local file
+        // define a local filename for this feature file
         java.io.File featureFile = new java.io.File(localOutputDirectory,
                                locatedFileStatus.getPath().getName());
+
+        // create the recorder that will write this RDD to this local file
         FeatureRecorderVoidFunction recorder =
                                new FeatureRecorderVoidFunction(featureFile);
 
-        // create the JavaFutureAction for this job
-        JavaFutureAction<Void> f = rdd.foreachAsync(recorder);
-        javaFutureActions.add(f);
+        // record the features for this job
+        rdd.foreach(recorder);
       }
 
-      // show the total bytes being processed
-      System.out.println("total bytes added: " + totalBytes);
-
-      // wait for all futures to finish.
-      while (javaFutureActions.size() != 0) {
-        JavaFutureAction<Void> f = javaFutureActions.remove();
-      }
+      // show the total bytes processed
+      System.out.println("total bytes processed: " + totalBytes);
 
       // Done
       System.out.println("Done.");
 
-    }  catch (IOException|InterruptedException|ExecutionException e) {
+//    }  catch (IOException|InterruptedException|ExecutionException e) {
+    }  catch (IOException e) {
       throw new RuntimeException(e);
 //      System.exit(1);
     }

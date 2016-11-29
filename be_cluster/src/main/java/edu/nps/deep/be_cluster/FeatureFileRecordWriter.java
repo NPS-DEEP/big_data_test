@@ -23,19 +23,17 @@ import scala.Tuple2;
  * Reads all email features in one split and returns them in one call
  * to nextKeyValue().
  */
-public final class EmailReader
-                         extends org.apache.hadoop.mapreduce.RecordReader<
+public final class FeatureFileRecordWriter
+                         extends org.apache.hadoop.mapreduce.RecordWriter<
                          Long, Features> {
 
-  private Features features;
-  private boolean isDone = false;
-  private SplitReader splitReader;
-
   @Override
-  public void initialize(
-                 org.apache.hadoop.mapreduce.InputSplit split,
-                 org.apache.hadoop.mapreduce.TaskAttemptContext context)
+  public void write(Long unusedKey, Features features)
                         throws IOException, InterruptedException {
+
+    while (features.size() != 0) {
+      Feature feature = features.get();
+      zzzzzzzzzzzzzzzzzzzzzzzzz
 
     // open the SplitReader
     splitReader = SplitReader.getReader(split, context);

@@ -1,28 +1,25 @@
 package edu.nps.deep.be_cluster;
 
-import java.util.ArrayDeque;
-
 %%
 
 %class BinaryLexer
 %8bit
 %caseless
 %int
-%ctorarg "long" "splitOffset"
-%ctorarg "long" "splitSize"
+%ctorarg long splitOffset
+%ctorarg long splitSize
 
 %{
 
   // All the features in the split are put here to be consumed in one read.
-  public ArrayDeque<ExtractedFeature> features =
-                                 new ArrayDeque<ExtractedFeature>();
+  public Features features = new Features();
 
   // byte position from the beginning of the split
   private long count = 0;
 
   // The size of this split.
   final private long splitSize;
-  final private long offset;
+  final private long splitOffset;
 
 
   @SuppressWarnings("fallthrough")
@@ -52,15 +49,15 @@ u_top_level_domain = ({u_tld1}|{u_tld2}|{u_tld3}|{u_tld4})
 /* email */
 [a-zA-Z0-9][a-zA-Z0-9._%\-+]{1,64}@[a-zA-Z0-9._%\-]{1,64}\.{top_level_domain}/[^a-zA-Z]
             { String email = yytext();
-              features.add(new ExtractedFeature(email, count + splitOffset));
-              count += yyleng;
+              features.add(new Feature(email, Long.toString(count + splitOffset)));
+              count += yylength();
             }
 
 /* unicode_16 email */
 [a-zA-Z0-9]\0([a-zA-Z0-9._%\-+]\0){1,64}@\0([a-zA-Z0-9._%\-]\0){1,64}\.\0{u_top_level_domain}/[^a-zA-Z]|([^][^\0])
             { String email = yytext();
-              features.add(new ExtractedFeature(email, count + splitOffset));
-              count += yyleng;
+              features.add(new Feature(email, Long.toString(count + splitOffset).toString()));
+              count += yylength();
             }
 
 [^]     { count++; }

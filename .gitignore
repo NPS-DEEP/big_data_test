@@ -6,6 +6,9 @@
 build/
 *temp_total_textfile
 bytecount/byte_count_output/
+jflex-*
+output*
+python/temp*
 
 # sbt specific
 .cache
