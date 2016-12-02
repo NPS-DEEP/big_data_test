@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 #
-# usage: plot_timing.py timing_file
-#
-# graph timing from timing_file to temp_deltas.pdf and temp_totals.pdf
+# graph timing from timing file
 
 import sys
 import pylab
@@ -11,8 +9,12 @@ import matplotlib.pyplot as plot
 from argparse import ArgumentParser
 from collections import defaultdict
 
-plotsize=(6,3.5)
-out_pdf = "temp_plot_delta"
+time_in_xlabel="Time in minutes"
+tasks_per_ylabel="GB per second"
+
+# 100 media images, bytes/splits/1G
+gb_per_split = 10220928331776/76201/(1000000000)
+seconds_per_bucket = 10
 
 def read_timing(timing_file):
     begin_deltas_dict = defaultdict(int)
@@ -23,8 +25,10 @@ def read_timing(timing_file):
             if len(line) < 47:
                 continue
 
-            # key is the hour:minute field
-            key = line[9:14]
+            # key is from hh:mm:ss
+#            key = line[9:14]    # every minute
+            key = line[9:16]    # every 10 seconds
+#            key = line[9:17]    # every 1 second
 
             # track two datasets: "Running task" and "Finished task"
             if line[18:45] == "INFO Executor: Running task":
@@ -49,16 +53,16 @@ def read_timing(timing_file):
         keys.append(k)
     keys.sort()
 
-    # produce deltas and totals
+    # produce delta and total lists
     for k in keys:
-        begin_delta = begin_deltas_dict[k]
-        end_delta = end_deltas_dict[k]
+        begin_delta = begin_deltas_dict[k] / seconds_per_bucket * gb_per_split
+        end_delta = end_deltas_dict[k] / seconds_per_bucket * gb_per_split
 
         begin_deltas.append(begin_delta)
         end_deltas.append(end_delta)
 
-        begin_total += begin_delta
-        end_total += end_delta
+        begin_total += begin_delta * seconds_per_bucket
+        end_total += end_delta * seconds_per_bucket
         begin_totals.append(begin_total)
         end_totals.append(end_total)
 
@@ -75,48 +79,52 @@ def read_timing(timing_file):
 
     return begin_deltas, end_deltas, begin_totals, end_totals
 
-def plot_deltas(begin_deltas, end_deltas, temp_delta):
+def plot_deltas(begin_deltas, end_deltas, suffix_name):
 
     # indexes
     indexes = numpy.arange(len(begin_deltas))
-    width = 0.3
+    width = 0.4
 
     fig, ax = plot.subplots()
 
     rectangles1 = ax.bar(indexes, begin_deltas, width=width, color='r')
     rectangles2 = ax.bar(indexes+width, end_deltas, width=width, color='g')
 
-    ax.set_xlabel("Time in minutes")
-    ax.set_title("Task throughput")
-    ax.set_ylabel("Tasks per minute")
+    ax.set_xlabel(time_in_xlabel)
+    ax.set_title("Delta GB throughput")
+    ax.set_ylabel(tasks_per_ylabel)
+    ax.legend((rectangles1[0], rectangles2[0]), ("Started", "Completed"), loc="lower center")
 
-    plot.savefig(temp_delta)
+    # for 10-second intervals
+    xtick_locations = numpy.arange(0, len(begin_deltas), 6)
+    xtick_labels = numpy.arange(len(xtick_locations))
+    plot.xticks(xtick_locations, xtick_labels)
+
+    plot.savefig("temp_deltas_%s.pdf" % suffix_name)
 
 
-def plot_totals(begin_totals, end_totals, temp_total):
+def plot_totals(begin_totals, end_totals, suffix_name):
 
     # indexes
     indexes = numpy.arange(len(begin_totals))
-    width = 0.3
+    width = 0.4
 
     fig, ax = plot.subplots()
 
     rectangles1 = ax.bar(indexes, begin_totals, width=width, color='r')
     rectangles2 = ax.bar(indexes+width, end_totals, width=width, color='g')
 
-    ax.set_xlabel("Time in minutes")
-    ax.set_title("Task throughput")
-    ax.set_ylabel("Tasks processed")
+    ax.set_xlabel(time_in_xlabel)
+    ax.set_title("Total GB throughput")
+    ax.set_ylabel("Total GB processed")
+    ax.legend((rectangles1[0], rectangles2[0]), ("Started", "Completed"), loc="upper center")
 
-    plot.savefig(temp_total)
+    # for 10-second intervals
+    xtick_locations = numpy.arange(0, len(begin_deltas), 6)
+    xtick_labels = numpy.arange(len(xtick_locations))
+    plot.xticks(xtick_locations, xtick_labels)
 
-
-
-
-
-
-
-
+    plot.savefig("temp_totals_%s.pdf" % suffix_name)
 
 if __name__=="__main__":
 
@@ -130,6 +138,7 @@ if __name__=="__main__":
     begin_deltas, end_deltas, begin_totals, end_totals = read_timing(
                                                                 timing_file)
 
-    plot_deltas(begin_deltas, end_deltas, "temp_deltas.pdf")
-    plot_totals(begin_totals, end_totals, "temp_totals.pdf")
+    suffix_name = timing_file
+    plot_deltas(begin_deltas, end_deltas, suffix_name)
+    plot_totals(begin_totals, end_totals, suffix_name)
 

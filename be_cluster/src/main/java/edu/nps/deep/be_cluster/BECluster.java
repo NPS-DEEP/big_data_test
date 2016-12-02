@@ -51,6 +51,7 @@ public final class BECluster {
     }
   }
 
+/*
   // ************************************************************
   // SplitFileOutputFormat implements getRecordWriter which returns
   // RecordWriter FeatureFileRecordWriter
@@ -70,6 +71,7 @@ public final class BECluster {
       return writer;
     }
   }
+*/
 
   // ************************************************************
   // feature recorder VoidFunction
@@ -122,10 +124,10 @@ public final class BECluster {
 
     sparkConfiguration.set("spark.driver.maxResultSize", "8g"); // default 1g, may use 2.5g
 
-    // create the local output directory as output+timestamp
-    java.io.File localOutputDirectory = new java.io.File("output" + new SimpleDateFormat(
+    // create output directory as output+timestamp
+    java.io.File outputDirectory = new java.io.File("output" + new SimpleDateFormat(
                           "yyyy-MM-dd hh-mm-ss'.tsv'").format(new Date()));
-    localOutputDirectory.mkdir();
+    outputDirectory.mkdir();
 
     // set up the Spark context
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
@@ -176,16 +178,29 @@ public final class BECluster {
                Long.class,                           // K
                Features.class);                      // V
 
-        // define a local filename for this feature file
-        java.io.File featureFile = new java.io.File(localOutputDirectory,
-                               locatedFileStatus.getPath().getName());
+        // define the filename for this feature file
+//        java.io.File featureFile = new java.io.File(outputDirectory,
+//                               locatedFileStatus.getPath().getName());
+//        String featureFile = new java.io.File(outputDirectory,
+//                               locatedFileStatus.getPath().getName()).toString();
+        String featureFile = "zzzzzzfile";
 
-        // create the recorder that will write this RDD to this local file
+/*
+        // create the recorder that will write this RDD to this file
         FeatureRecorderVoidFunction recorder =
                                new FeatureRecorderVoidFunction(featureFile);
+*/
 
+/*
         // record the features for this job
         rdd.foreach(recorder);
+*/
+
+//        rdd.saveAsNewAPIHadoopFile(featureFile, Long.class, Features.class,
+//               org.apache.hadoop.mapreduce.lib.output.TextOutputFormat.class);
+
+        long c = rdd.count();
+        System.out.println("zzzzzzzzzzzzz count " + c);
       }
 
       // show the total bytes processed
