@@ -1,13 +1,14 @@
 package edu.nps.deep.be_cluster;
 
-import java.util.ArrayDeque;
+import java.util.Vector;
+import java.util.Iterator;
 import java.io.Serializable;
 
 /**
  * Wrap Template with this concrete class to avoid inferred type mismatch.
  */
 public final class Features implements Serializable {
-  private final ArrayDeque<Feature> features = new ArrayDeque<Feature>();
+  private final Vector<Feature> features = new Vector<Feature>();
 
   public int size() {
     return features.size();
@@ -17,8 +18,8 @@ public final class Features implements Serializable {
     features.add(feature);
   }
 
-  public Feature remove() {
-    return features.remove();
+  public Iterator<Feature> iterator() {
+    return features.iterator();
   }
 }
 

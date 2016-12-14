@@ -33,8 +33,7 @@ import org.apache.hadoop.io.IOUtils;
  * Reader interface for reading char[n] from hadoop file bytes.
  * Limitation: It is an IOException to read more than MAX_BUFSIZE at once.
  *
- * Note: This reads past the hadoop split.  Call splitDistance() to see
- *       how many more bytes can be read before reaching the split.
+ * Note: This does not read past the hadoop split.
  */
 public final class SplitReader extends java.io.Reader {
 
@@ -44,11 +43,11 @@ public final class SplitReader extends java.io.Reader {
   // Hadoop input stream
   private FSDataInputStream in;
 
-  // buffer between Hadoop and SplitReader output
-  private static final int MAX_BUFSIZE = 131072; // 2^17=128KiB
+  // buffer containing the hadoop split
   private long moreFile;
   private long moreSplit;
   private byte[] buffer;
+  private int bufferSize;
   private int bufferHead;
 
   private SplitReader(InputSplit split,
@@ -105,79 +104,21 @@ public final class SplitReader extends java.io.Reader {
     // seek to the split
     reader.in.seek(start);
 
-    // set initial values
-    reader.moreFile = reader.getFileSize() - start;
-    if (reader.moreFile < 0) {
+    // read the split
+    final long fileSize = reader.getFileSize();
+    final long splitSize = reader.getSplitSize();
+    if (start > fileSize) {
       throw new IOException("invalid state");
     }
-    reader.moreSplit = ((FileSplit)reader.inputSplit).getLength();
-    reader.buffer = new byte[MAX_BUFSIZE];
-    reader.bufferHead = MAX_BUFSIZE;
-
+    reader.bufferSize = (fileSize - start > splitSize) ? (int)splitSize : (int)(fileSize - start);
+    reader.buffer = new byte[reader.bufferSize];
+    reader.bufferHead = 0;
     return reader;
-  }
-
-  // read into buffer if it is too empty
-  private void prepareBuffer(int sizeRequested)
-                               throws IOException {
-//                               throws IOException, InterruptedException {
-
-    // no action if data is available
-    int sizeAvailable = MAX_BUFSIZE - bufferHead;
-    if (sizeRequested <= sizeAvailable) {
-      return;
-    }
-
-    // no action if at EOF
-    if (moreFile == 0) {
-      System.err.println("Note: no prepareBuffer read because moreFile is 0");
-      return;
-    }
-
-    // impose a max read size less than buffer size
-    if (sizeRequested > MAX_BUFSIZE / 2) {
-      throw new IOException("invalid state");
-    }
-
-    // get count of bytes to read
-    int countToRead = bufferHead;
-    if (countToRead > moreFile) {
-      countToRead = (int)moreFile;
-    }
-
-    // shift unread bytes from end to left of bytes to read
-    for (int i=bufferHead; i<MAX_BUFSIZE; i++) {
-      buffer[i-countToRead] = buffer[i];
-    }
-
-    // read count of bytes into buffer
-    IOUtils.readFully(in, buffer, MAX_BUFSIZE - countToRead, countToRead);
-
-//System.out.println("prepareBuffer.readFully: bufferHead: " + bufferHead + ", countToRead: " + countToRead);
-
-    // adjust tracking variables
-    moreFile -= countToRead;
-    moreSplit -= countToRead; // goes negative when reading beyond split
-    bufferHead -= countToRead;
-
-//for (int j=bufferHead; j<MAX_BUFSIZE; j++) {
-//System.out.println("prepareBuffer.buffer[" + j + "]: " + buffer[j]);
-//}
-
   }
 
   // ************************************************************
   // public Reader interfaces
   // ************************************************************
-
-  // specialized interface
-  /**
-   * splitDistance becomes 0 and goes negative as we begin to read into
-   * the next split.
-   */
-  public long splitDistance() {
-    return moreSplit - (MAX_BUFSIZE - bufferHead);
-  }
 
   // close
 //zz  public void close() throws IOException, InterruptedException {
@@ -197,18 +138,9 @@ public final class SplitReader extends java.io.Reader {
 //System.out.println("stdout: read: off: " + off + ", len: " + len);
 //System.err.println("stderr: read: off: " + off + ", len: " + len);
 
-    // require a max read size less than buffer size
-    if (len > MAX_BUFSIZE / 2) {
-      throw new IOException("invalid usage: " + len +
-                            " must be less than " + MAX_BUFSIZE / 2 + ".");
-    }
-
-    // make sure buffer is ready to support the read
-    prepareBuffer(len);
-
     // get less than len if at EOF
-    final int count = (len < MAX_BUFSIZE - bufferHead) ? len :
-                                               MAX_BUFSIZE - bufferHead;
+    final int count = (len < bufferSize - bufferHead) ? len :
+                                               bufferSize - bufferHead;
 
     // no count means EOF
     if (count == 0) {

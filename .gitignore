@@ -9,6 +9,8 @@ bytecount/byte_count_output/
 jflex-*
 output*
 python/temp*
+BinaryLexer.java
+BinaryLexer.java~
 
 # sbt specific
 .cache

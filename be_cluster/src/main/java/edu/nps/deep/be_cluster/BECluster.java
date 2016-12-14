@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.concurrent.ExecutionException;
 import java.util.Date;
-import java.util.ArrayDeque;
+import java.util.Iterator;
 import java.text.SimpleDateFormat;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.fs.FileSystem;
@@ -43,8 +43,21 @@ public final class BECluster {
                  org.apache.hadoop.mapreduce.InputSplit split,
                  org.apache.hadoop.mapreduce.TaskAttemptContext context)
                        throws IOException, InterruptedException {
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
 
-//zz      org.apache.hadoop.mapreduce.RecordReader<Long, Features> reader = new EmailReader();
       EmailReader reader = new EmailReader();
       reader.initialize(split, context);
       return reader;
@@ -90,8 +103,9 @@ public final class BECluster {
     }
 
     public void call(Tuple2<Long, Features> tupleFeatures) throws IOException {
-      while (tupleFeatures._2().size() != 0) {
-        Feature feature = tupleFeatures._2().remove();
+      Iterator<Feature> it = tupleFeatures._2().iterator();
+      while (it.hasNext()) {
+        Feature feature = it.next();
         out.write(feature.forensicPath + "\t" + feature.featureBytes);
       }
     }
@@ -115,12 +129,12 @@ public final class BECluster {
     sparkConfiguration.set("log4j.logger.org.apache.spark.scheduler.DAGScheduler", "TRACE");
     sparkConfiguration.set("yarn.log-aggregation-enable", "true");
     sparkConfiguration.set("fs.hdfs.impl.disable.cache", "true");
-    sparkConfiguration.set("spark.app.id", "Spark Byte Count 2 App");
+    sparkConfiguration.set("spark.app.id", "Spark BECluster App");
     sparkConfiguration.set("spark.executor.extrajavaoptions", "-XX:+UseConcMarkSweepGC");
-    sparkConfiguration.set("spark.dynamicAllocation.maxExecutors", "10000");
+    sparkConfiguration.set("spark.dynamicAllocation.maxExecutors", "10");
 
 // no, we will have multiple keys:    sparkConfiguration.set("spark.default.parallelism", "1");
-    sparkConfiguration.set("spark.default.parallelism", "64");
+    sparkConfiguration.set("spark.default.parallelism", "1");
 
     sparkConfiguration.set("spark.driver.maxResultSize", "8g"); // default 1g, may use 2.5g
 
@@ -156,9 +170,9 @@ public final class BECluster {
 //        if (++i > 10) {
 //          break;
 //        }
-//if (locatedFileStatus.getPath().toString().indexOf("Fedora-Xfce-Live-x86_64-24-1.2.iso") >= 0) {
-//continue;
-//}
+if (locatedFileStatus.getPath().toString().indexOf("Fedora-Xfce-Live-x86_64-24-1.2.iso") >= 0) {
+continue;
+}
 
         // show file being added
         System.out.println("adding " + locatedFileStatus.getLen() +
@@ -170,6 +184,7 @@ public final class BECluster {
 
         // add this file to the job
         FileInputFormat.addInputPath(hadoopJob, locatedFileStatus.getPath());
+        totalBytes += locatedFileStatus.getLen();
 
         // define the RDD of byte histograms for splits for this job
         JavaPairRDD<Long, Features> rdd = sparkContext.newAPIHadoopRDD(
@@ -196,8 +211,8 @@ public final class BECluster {
         rdd.foreach(recorder);
 */
 
-//        rdd.saveAsNewAPIHadoopFile(featureFile, Long.class, Features.class,
-//               org.apache.hadoop.mapreduce.lib.output.TextOutputFormat.class);
+        rdd.saveAsNewAPIHadoopFile(featureFile, Long.class, Features.class,
+               org.apache.hadoop.mapreduce.lib.output.TextOutputFormat.class);
 
         long c = rdd.count();
         System.out.println("zzzzzzzzzzzzz count " + c);

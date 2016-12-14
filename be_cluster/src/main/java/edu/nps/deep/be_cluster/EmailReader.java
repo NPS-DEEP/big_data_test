@@ -27,7 +27,7 @@ public final class EmailReader
                          extends org.apache.hadoop.mapreduce.RecordReader<
                          Long, Features> {
 
-  private Features features;
+  private Features features = new Features();
   private boolean isDone = false;
   private SplitReader splitReader;
 
@@ -43,10 +43,13 @@ public final class EmailReader
 
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzz nextKeyValue.a");
     // only call this once
     if (isDone) {
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzz nextKeyValue.b");
       return false;
     } else {
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzz nextKeyValue.c");
       isDone = true;
     }
 
