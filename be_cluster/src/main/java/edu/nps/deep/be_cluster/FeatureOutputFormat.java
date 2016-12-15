@@ -2,6 +2,7 @@
 
 package edu.nps.deep.be_cluster;
 
+import java.util.Iterator;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
@@ -11,6 +12,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.FSDataOutputStream;
 
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.util.*;
@@ -45,7 +47,7 @@ public class FeatureOutputFormat extends FileOutputFormat<Long, Features> {
     }
   }
 
-  public RecordWriter<K, V> 
+  public RecordWriter<Long, Features>
          getRecordWriter(TaskAttemptContext job
                          ) throws IOException, InterruptedException {
     Configuration conf = job.getConfiguration();
