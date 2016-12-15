@@ -70,18 +70,13 @@ System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz createRecordReader");
     sparkConfiguration.set("yarn.log-aggregation-enable", "true");
     sparkConfiguration.set("fs.hdfs.impl.disable.cache", "true");
     sparkConfiguration.set("spark.app.id", "Spark BECluster App");
-    sparkConfiguration.set("spark.executor.extrajavaoptions", "-XX:+UseConcMarkSweepGC");
-    sparkConfiguration.set("spark.dynamicAllocation.maxExecutors", "10");
+//    sparkConfiguration.set("spark.executor.extrajavaoptions", "-XX:+UseConcMarkSweepGC");
+    sparkConfiguration.set("spark.dynamicAllocation.maxExecutors", "400");
 
 // no, we will have multiple keys:    sparkConfiguration.set("spark.default.parallelism", "1");
     sparkConfiguration.set("spark.default.parallelism", "1");
 
     sparkConfiguration.set("spark.driver.maxResultSize", "8g"); // default 1g, may use 2.5g
-
-//    // create output directory as output+timestamp
-//    java.io.File outputDirectory = new java.io.File("output" + new SimpleDateFormat(
-//                          "yyyy-MM-dd hh-mm-ss'.tsv'").format(new Date()));
-//    outputDirectory.mkdir();
 
     // set up the Spark context
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
@@ -107,12 +102,9 @@ System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz createRecordReader");
         LocatedFileStatus locatedFileStatus = fileStatusListIterator.next();
 
         // restrict number of files to process or else comment this out
-        if (++i > 10) {
+        if (++i > 2) {
           break;
         }
-if (locatedFileStatus.getPath().toString().indexOf("Fedora-Xfce-Live-x86_64-24-1.2.iso") >= 0) {
-continue;
-}
 
         // show file being added
         System.out.println("adding " + locatedFileStatus.getLen() +
@@ -133,18 +125,16 @@ continue;
                Long.class,                           // K
                Features.class);                      // V
 
-        // define the filename for this feature file
-//        java.io.File featureFile = new java.io.File(outputDirectory,
-//                               locatedFileStatus.getPath().getName());
-//        String featureFile = new java.io.File(outputDirectory,
-//                               locatedFileStatus.getPath().getName()).toString();
-        String featureFile = "zzzzzzfile" + i;
+        // feature file name is feature_email_<filename suffix>_<timestamp>
+        String filenameSuffix = locatedFileStatus.getPath().getName();
+        String timestamp = new java.io.File("output" + new SimpleDateFormat(
+                          "yyyy-MM-dd hh-mm-ss'.tsv'").format(new Date()));
+        String featureFile = "feature_email_" + filenameSuffix +
+                             "_" + timestamp;
 
+        // save scan data for this file into a hadoop feature file
         rdd.saveAsNewAPIHadoopFile(featureFile, Long.class, Features.class,
                                    FeatureOutputFormat.class);
-
-//        long c = rdd.count();
-//        System.out.println("zzzzzzzzzzzzz count " + c);
       }
 
       // show the total bytes processed

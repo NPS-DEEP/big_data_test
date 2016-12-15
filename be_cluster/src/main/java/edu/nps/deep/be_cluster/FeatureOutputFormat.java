@@ -37,7 +37,8 @@ public class FeatureOutputFormat extends FileOutputFormat<Long, Features> {
       Iterator<Feature> it = value.iterator();
       while (it.hasNext()) {
         Feature feature = it.next();
-        out.writeUTF(feature.forensicPath + "\t" + feature.featureBytes);
+        out.writeBytes(feature.forensicPath + "\t" +
+                       feature.featureBytes + "\n");
       }
     }
 
