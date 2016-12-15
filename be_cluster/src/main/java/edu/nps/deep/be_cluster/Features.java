@@ -21,5 +21,14 @@ public final class Features implements Serializable {
   public Iterator<Feature> iterator() {
     return features.iterator();
   }
+
+  public String toString() {
+    Iterator it = iterator();
+    String s = new String();
+    while (it.hasNext()) {
+      s += "(" + it.next() + ")";
+    }
+    return s;
+  }
 }
 

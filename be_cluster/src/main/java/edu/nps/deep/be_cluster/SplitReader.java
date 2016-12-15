@@ -113,6 +113,7 @@ public final class SplitReader extends java.io.Reader {
     reader.bufferSize = (fileSize - start > splitSize) ? (int)splitSize : (int)(fileSize - start);
     reader.buffer = new byte[reader.bufferSize];
     reader.bufferHead = 0;
+    org.apache.hadoop.io.IOUtils.readFully(reader.in, reader.buffer, 0, (int)reader.bufferSize);
     return reader;
   }
 

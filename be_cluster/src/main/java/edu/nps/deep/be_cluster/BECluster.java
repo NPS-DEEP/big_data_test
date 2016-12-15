@@ -43,71 +43,11 @@ public final class BECluster {
                  org.apache.hadoop.mapreduce.InputSplit split,
                  org.apache.hadoop.mapreduce.TaskAttemptContext context)
                        throws IOException, InterruptedException {
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
+System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz createRecordReader");
 
       EmailReader reader = new EmailReader();
       reader.initialize(split, context);
       return reader;
-    }
-  }
-
-/*
-  // ************************************************************
-  // SplitFileOutputFormat implements getRecordWriter which returns
-  // RecordWriter FeatureFileRecordWriter
-  // ************************************************************
-  public static class SplitFileOutputFormat
-        extends org.apache.hadoop.mapreduce.lib.output.FileOutputFormat<
-                         Long, Features> {
-
-    // get the feature file record writer
-    @Override
-    public org.apache.hadoop.mapreduce.RecordWriter<Long, Features>
-           getRecordWriter(
-                 org.apache.hadoop.mapreduce.TaskAttemptContext context)
-                       throws IOException, InterruptedException {
-
-      FeatureFileRecordWriter writer = new FeatureFileRecordWriter();
-      return writer;
-    }
-  }
-*/
-
-  // ************************************************************
-  // feature recorder VoidFunction
-  // ************************************************************
-  public static class FeatureRecorderVoidFunction
-         implements VoidFunction<Tuple2<Long, Features>> {
-
-    private java.io.BufferedWriter out;
-
-    public FeatureRecorderVoidFunction(java.io.File featureFile) {
-      try {
-        out = new java.io.BufferedWriter(new java.io.FileWriter(featureFile));
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
-    }
-
-    public void call(Tuple2<Long, Features> tupleFeatures) throws IOException {
-      Iterator<Feature> it = tupleFeatures._2().iterator();
-      while (it.hasNext()) {
-        Feature feature = it.next();
-        out.write(feature.forensicPath + "\t" + feature.featureBytes);
-      }
     }
   }
 
@@ -138,10 +78,10 @@ System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcreateRecordReader");
 
     sparkConfiguration.set("spark.driver.maxResultSize", "8g"); // default 1g, may use 2.5g
 
-    // create output directory as output+timestamp
-    java.io.File outputDirectory = new java.io.File("output" + new SimpleDateFormat(
-                          "yyyy-MM-dd hh-mm-ss'.tsv'").format(new Date()));
-    outputDirectory.mkdir();
+//    // create output directory as output+timestamp
+//    java.io.File outputDirectory = new java.io.File("output" + new SimpleDateFormat(
+//                          "yyyy-MM-dd hh-mm-ss'.tsv'").format(new Date()));
+//    outputDirectory.mkdir();
 
     // set up the Spark context
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
@@ -200,22 +140,11 @@ continue;
 //                               locatedFileStatus.getPath().getName()).toString();
         String featureFile = "zzzzzzfile";
 
-/*
-        // create the recorder that will write this RDD to this file
-        FeatureRecorderVoidFunction recorder =
-                               new FeatureRecorderVoidFunction(featureFile);
-*/
-
-/*
-        // record the features for this job
-        rdd.foreach(recorder);
-*/
-
         rdd.saveAsNewAPIHadoopFile(featureFile, Long.class, Features.class,
-               org.apache.hadoop.mapreduce.lib.output.TextOutputFormat.class);
+                                   FeatureOutputFormat.class);
 
-        long c = rdd.count();
-        System.out.println("zzzzzzzzzzzzz count " + c);
+//        long c = rdd.count();
+//        System.out.println("zzzzzzzzzzzzz count " + c);
       }
 
       // show the total bytes processed
