@@ -61,3 +61,8 @@ task run3(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'
   args = ["--class","edu.nps.deep.be_cluster.BECluster", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_cluster/build/libs/be_cluster-${version}.jar", "/user/tjandrze/DEEP/input"]
 }
+
+task run4(overwrite: true, type: Exec, dependsOn: [assemble]) {
+  executable = 'spark-submit'
+  args = ["--class","edu.nps.deep.be_cluster.BECluster", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_cluster/build/libs/be_cluster-${version}.jar", "input"]
+}

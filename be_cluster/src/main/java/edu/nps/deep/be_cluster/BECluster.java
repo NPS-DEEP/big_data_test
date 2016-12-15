@@ -106,10 +106,10 @@ System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz createRecordReader");
         // get file status for this file
         LocatedFileStatus locatedFileStatus = fileStatusListIterator.next();
 
-//        // restrict number of files to process or else comment this out
-//        if (++i > 10) {
-//          break;
-//        }
+        // restrict number of files to process or else comment this out
+        if (++i > 10) {
+          break;
+        }
 if (locatedFileStatus.getPath().toString().indexOf("Fedora-Xfce-Live-x86_64-24-1.2.iso") >= 0) {
 continue;
 }
@@ -138,7 +138,7 @@ continue;
 //                               locatedFileStatus.getPath().getName());
 //        String featureFile = new java.io.File(outputDirectory,
 //                               locatedFileStatus.getPath().getName()).toString();
-        String featureFile = "zzzzzzfile";
+        String featureFile = "zzzzzzfile" + i;
 
         rdd.saveAsNewAPIHadoopFile(featureFile, Long.class, Features.class,
                                    FeatureOutputFormat.class);

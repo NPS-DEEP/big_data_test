@@ -60,13 +60,13 @@ System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzz nextKeyValue.c");
       l.yylex();
     } while (!l.at_eof());
 
+    // make reference to the found email features
+    features = l.features;
+
     // done if no features found
     if (features.size() == 0) {
       return false;
     }
-
-    // keep the found email features
-    features = l.features;
 
     return true;
   }
