@@ -127,8 +127,8 @@ System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz createRecordReader");
 
         // feature file name is feature_email_<filename suffix>_<timestamp>
         String filenameSuffix = locatedFileStatus.getPath().getName();
-        String timestamp = new java.io.File("output" + new SimpleDateFormat(
-                          "yyyy-MM-dd hh-mm-ss'.tsv'").format(new Date()));
+        String timestamp = new SimpleDateFormat(
+                          "yyyy-MM-dd hh-mm-ss'.tsv'").format(new Date());
         String featureFile = "feature_email_" + filenameSuffix +
                              "_" + timestamp;
 

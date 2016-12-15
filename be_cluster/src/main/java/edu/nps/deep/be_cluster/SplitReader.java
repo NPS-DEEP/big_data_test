@@ -67,22 +67,26 @@ public final class SplitReader extends java.io.Reader {
   }
 
   // size of file
-  public long getFileSize() throws IOException, InterruptedException {
-    final Path path = ((FileSplit)inputSplit).getPath();
-    final Configuration configuration = taskAttemptContext.getConfiguration();
-    final FileSystem fileSystem = path.getFileSystem(configuration);
-    final long fileSize = fileSystem.getFileStatus(path).getLen();
-    return fileSize;
+  public long getFileSize() {
+    try {
+      final Path path = ((FileSplit)inputSplit).getPath();
+      final Configuration configuration = taskAttemptContext.getConfiguration();
+      final FileSystem fileSystem = path.getFileSystem(configuration);
+      final long fileSize = fileSystem.getFileStatus(path).getLen();
+      return fileSize;
+    } catch (IOException e) {
+      return 0;
+    }
   }
 
   // offset to the start of this split
-  public long getSplitOffset() throws IOException, InterruptedException {
+  public long getSplitOffset() {
     final long splitStart = ((FileSplit)inputSplit).getStart();
     return splitStart;
   }
 
   // size of this split
-  public long getSplitSize() throws IOException, InterruptedException {
+  public long getSplitSize() {
     final long splitSize = ((FileSplit)inputSplit).getLength();
     return splitSize;
   }
@@ -157,6 +161,12 @@ public final class SplitReader extends java.io.Reader {
     bufferHead += count;
 
     return count;
+  }
+
+  public String readContext(int off, int len) {
+    final int start = (off - 16 < 0) ? 0 : off - 16;
+    final int stop = (off + len + 16 > bufferSize) ? bufferSize : off+len+16;
+    return new String(buffer, start, stop - start);
   }
 }
 

@@ -6,21 +6,21 @@ package edu.nps.deep.be_cluster;
 %8bit
 %caseless
 %int
-%ctorarg long splitOffset
-%ctorarg long splitSize
 
 %{
 
   // All the features in the split are put here to be consumed in one read.
   public Features features = new Features();
 
-  // byte position from the beginning of the split
-  private long count = 0;
+  // the reader typecast to the SplitReader that it is
+  final private SplitReader splitReader;
 
-  // The size of this split.
+  // the size of this split.
   final private long splitSize;
   final private long splitOffset;
 
+  // byte position from the beginning of the split
+  private long count = 0;
 
   @SuppressWarnings("fallthrough")
 
@@ -31,10 +31,9 @@ package edu.nps.deep.be_cluster;
 %}
 
 %init{
-this.splitOffset = splitOffset;
-this.splitSize = splitSize;
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzz splitOffset " + this.splitOffset);
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzz splitSize " + this.splitSize);
+splitReader = (SplitReader)in;
+splitOffset = splitReader.getSplitOffset();
+splitSize = splitReader.getSplitSize();
 %init}
 
 top_level_domain = (AC|AD|AE|AERO|AF|AG|AI|AL|AM|AN|AO|AQ|AR|ARPA|AS|ASIA|AT|AU|AW|AX|AZ|BA|BB|BD|BE|BF|BG|BH|BI|BIZ|BJ|BL|BM|BN|BO|BR|BS|BT|BV|BW|BY|BZ|CA|CAT|CC|CD|CF|CG|CH|CI|CK|CL|CM|CN|CO|COM|COOP|CR|CU|CV|CX|CY|CZ|DE|DJ|DK|DM|DO|DZ|EC|EDU|EE|EG|EH|ER|ES|ET|EU|FI|FJ|FK|FM|FO|FR|GA|GB|GD|GE|GF|GG|GH|GI|GL|GM|GN|GOV|GP|GQ|GR|GS|GT|GU|GW|GY|HK|HM|HN|HR|HT|HU|ID|IE|IL|IM|IN|INFO|INT|IO|IQ|IR|IS|IT|JE|JM|JO|JOBS|JP|KE|KG|KH|KI|KM|KN|KP|KR|KW|KY|KZ|LA|LB|LC|LI|LK|LR|LS|LT|LU|LV|LY|MA|MC|MD|ME|MF|MG|MH|MIL|MK|ML|MM|MN|MO|MOBI|MP|MQ|MR|MS|MT|MU|MUSEUM|MV|MW|MX|MY|MZ|NA|NAME|NC|NE|NET|NF|NG|NI|NL|NO|NP|NR|NU|NZ|OM|ORG|PA|PE|PF|PG|PH|PK|PL|PM|PN|PR|PRO|PS|PT|PW|PY|QA|RE|RO|RS|RU|RW|SA|SB|SC|SD|SE|SG|SH|SI|SJ|SK|SL|SM|SN|SO|SR|ST|SU|SV|SY|SZ|TC|TD|TEL|TF|TG|TH|TJ|TK|TL|TM|TN|TO|TP|TR|TRAVEL|TT|TV|TW|TZ|UA|UG|UK|UM|US|UY|UZ|VA|VC|VE|VG|VI|VN|VU|WF|WS|YE|YT|YU|ZA|ZM|ZW)
@@ -51,16 +50,16 @@ u_top_level_domain = ({u_tld1}|{u_tld2}|{u_tld3}|{u_tld4})
 /* email */
 [a-zA-Z0-9][a-zA-Z0-9._%\-+]{1,64}@[a-zA-Z0-9._%\-]{1,64}\.{top_level_domain}/[^a-zA-Z]
             { String email = yytext();
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz feature found");
-              features.add(new Feature(Long.toString(count + splitOffset), email));
+//System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz feature found");
+              features.add(new Feature(Long.toString(count + splitOffset), email, splitReader.readContext((int)count, yylength())));
               count += yylength();
             }
 
 /* unicode_16 email */
 [a-zA-Z0-9]\0([a-zA-Z0-9._%\-+]\0){1,64}@\0([a-zA-Z0-9._%\-]\0){1,64}\.\0{u_top_level_domain}/[^a-zA-Z]|([^][^\0])
             { String email = yytext();
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz unicode16 feature found");
-              features.add(new Feature(Long.toString(count + splitOffset), email));
+//System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz unicode16 feature found");
+              features.add(new Feature(Long.toString(count + splitOffset), email, splitReader.readContext((int)count, yylength())));
               count += yylength();
             }
 

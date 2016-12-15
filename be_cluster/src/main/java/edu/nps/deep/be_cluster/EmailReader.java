@@ -43,19 +43,18 @@ public final class EmailReader
 
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzz nextKeyValue.a");
+//System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzz nextKeyValue.a");
     // only call this once
     if (isDone) {
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzz nextKeyValue.b");
+//System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzz nextKeyValue.b");
       return false;
     } else {
-System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzz nextKeyValue.c");
+//System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzz nextKeyValue.c");
       isDone = true;
     }
 
     // parse the whole split and capture all email features
-    BinaryLexer l = new BinaryLexer(splitReader,
-              splitReader.getSplitOffset(), splitReader.getSplitSize());
+    BinaryLexer l = new BinaryLexer(splitReader);
     do {
       l.yylex();
     } while (!l.at_eof());
