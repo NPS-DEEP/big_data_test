@@ -28,6 +28,10 @@ public class FeatureOutputFormat extends FileOutputFormat<Long, Features> {
       this.out = out;
     }
 
+    private String escape(String value) {
+      return UnicodeEscape(validateOrEscapeUTF8(value, true, true));
+    }
+
     public synchronized void write(Long key, Features value)
                                  throws IOException {
 
@@ -38,8 +42,8 @@ public class FeatureOutputFormat extends FileOutputFormat<Long, Features> {
       while (it.hasNext()) {
         Feature feature = it.next();
         out.writeBytes(feature.path + "\t" +
-                       feature.feature + "\t" +
-                       feature.context + "\n");
+                       escape(feature.feature) + "\t" +
+                       escape(feature.context) + "\n");
       }
     }
 
