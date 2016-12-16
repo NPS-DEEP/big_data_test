@@ -33,7 +33,7 @@ public class FeatureOutputFormat extends FileOutputFormat<Long, Features> {
         char ch = input.charAt(i);
         if (ch < ' ' || ch > '~') {
           // show as 0xXX
-          output.append(String.format("0x%02x", (int)ch));
+          output.append(String.format("\\x%02x", (int)ch));
         } else {
           // show ascii character
           output.append(ch);
