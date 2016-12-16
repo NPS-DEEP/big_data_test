@@ -27,8 +27,19 @@ public class FeatureOutputFormat extends FileOutputFormat<Long, Features> {
       this.out = out;
     }
 
-    private String escape(String value) {
-      return UnicodeEscape.validateOrEscapeUTF8(value, true, true);
+    private String escape(String input) {
+      StringBuilder output = new StringBuilder();
+      for (int i=0; i<input.length(); ++i) {
+        char ch = input.charAt(i);
+        if (ch < ' ' || ch > '~') {
+          // show as 0xXX
+          output.append(String.format("0x%02x", (int)ch));
+        } else {
+          // show ascii character
+          output.append(ch);
+        }
+      }
+      return output.toString();
     }
 
     public synchronized void write(Long key, Features value)
