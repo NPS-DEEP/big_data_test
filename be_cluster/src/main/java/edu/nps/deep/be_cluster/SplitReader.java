@@ -166,7 +166,11 @@ public final class SplitReader extends java.io.Reader {
   public String readContext(int off, int len) {
     final int start = (off - 16 < 0) ? 0 : off - 16;
     final int stop = (off + len + 16 > bufferSize) ? bufferSize : off+len+16;
-    return new String(buffer, start, stop - start);
+    StringBuilder output = new StringBuilder();
+    for (int i=start; i<stop; ++i) {
+      output.append((char)(0xff & buffer[i]));
+    }
+    return output.toString();
   }
 }
 
