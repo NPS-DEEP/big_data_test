@@ -1,7 +1,6 @@
 // Adapted from org.apache.hadoop.mapreduce.lib.output.TextOutputFormat.java
 
 package edu.nps.deep.be_cluster;
-
 import java.util.Iterator;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -29,7 +28,7 @@ public class FeatureOutputFormat extends FileOutputFormat<Long, Features> {
     }
 
     private String escape(String value) {
-      return UnicodeEscape(validateOrEscapeUTF8(value, true, true));
+      return UnicodeEscape.validateOrEscapeUTF8(value, true, true);
     }
 
     public synchronized void write(Long key, Features value)

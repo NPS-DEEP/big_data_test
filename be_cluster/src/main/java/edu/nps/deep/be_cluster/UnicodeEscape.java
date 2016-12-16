@@ -93,8 +93,8 @@ public class UnicodeEscape {
       // utf8 2 bytes  (110x xxxx) prefix
       if(((ch & 0xe0)==0xc0)  // 2-byte prefix
            && (i+1 < input.length())
-           && utf8cont((uint8_t)input.charAt(i+1))){
-        uint32_t unichar = ((input.charAt(i) & 0x1f) << 6) | ((input.charAt(i+1) & 0x3f));
+           && utf8cont(input.charAt(i+1))){
+        long unichar = ((input.charAt(i) & 0x1f) << 6) | ((input.charAt(i+1) & 0x3f));
 
         // check for valid 2-byte encoding
         if(valid_utf8codepoint(unichar)
@@ -111,7 +111,7 @@ public class UnicodeEscape {
            && (i+2 < input.length())
            && utf8cont(input.charAt(i+1))
            && utf8cont(input.charAt(i+2))){
-        uint32_t unichar = ((input.charAt(i) & 0x0f) << 12)
+        long unichar = ((input.charAt(i) & 0x0f) << 12)
                 | ((input.charAt(i+1) & 0x3f) << 6)
                 | ((input.charAt(i+2) & 0x3f));
             
@@ -131,7 +131,7 @@ public class UnicodeEscape {
            && utf8cont(input.charAt(i+1))
            && utf8cont(input.charAt(i+2))
            && utf8cont(input.charAt(i+3))){
-        uint32_t unichar =( ((input.charAt(i) & 0x07) << 18)
+        long unichar =( ((input.charAt(i) & 0x07) << 18)
                                 |((input.charAt(i+1) & 0x3f) << 12)
                                 |((input.charAt(i+2) & 0x3f) <<  6)
                                 |((input.charAt(i+3) & 0x3f)));
