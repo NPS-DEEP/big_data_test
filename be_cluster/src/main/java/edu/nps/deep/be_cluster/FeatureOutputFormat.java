@@ -31,9 +31,9 @@ public class FeatureOutputFormat extends FileOutputFormat<Long, Features> {
       StringBuilder output = new StringBuilder();
       for (int i=0; i<input.length(); ++i) {
         char ch = input.charAt(i);
-        if (ch < ' ' || ch > '~') {
+        if (ch < ' ' || ch > '~' || ch == '\\') {
           // show as \xXX
-          output.append(String.format("\\x%02x", (int)ch));
+          output.append(String.format("\\x%02X", (int)ch));
         } else {
           // show ascii character
           output.append(ch);
