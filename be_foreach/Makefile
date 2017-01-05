@@ -1,4 +1,4 @@
-JAVA_SRC = src/main/java/edu/nps/deep/be_foreach
+JAVA_SRC = src/main/java/edu/nps/deep/be_cluster
 JFLEX_URL = http://jflex.de/release/jflex-1.6.1.zip
 JFLEX_JAR = jflex-1.6.1/lib/jflex-1.6.1.jar
 all: $(JAVA_SRC)/BinaryLexer.java

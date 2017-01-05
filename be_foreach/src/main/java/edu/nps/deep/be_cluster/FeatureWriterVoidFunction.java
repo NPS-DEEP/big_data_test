@@ -33,6 +33,8 @@ public class FeatureWriterVoidFunction implements Serializable,
       FileWriter fw = new FileWriter(filename, true); // append
       BufferedWriter out = new BufferedWriter(fw);
       writeFeatures(tuple._2(), out);
+      out.close();
+      fw.close();
     } catch (IOException e) {
       // bad
       System.err.println("Error saving to file " + filename);
