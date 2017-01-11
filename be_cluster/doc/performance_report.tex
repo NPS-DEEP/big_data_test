@@ -1,0 +1,77 @@
+
+%\documentclass[10pt,twoside,twocolumn]{article}
+\documentclass[12pt,twoside]{article}
+\usepackage[bf,small]{caption}
+\usepackage[letterpaper,hmargin=1in,vmargin=1in]{geometry}
+\usepackage{paralist} % comapctitem, compactdesc, compactenum
+\usepackage{titlesec}
+\usepackage{titletoc}
+\usepackage{times}
+\usepackage{hyperref}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\graphicspath{{./graphics/}}
+\usepackage{xspace}
+\usepackage{verbatim}
+\usepackage{url}
+\usepackage{float}
+\hyphenation{Sub-Bytes Shift-Rows Mix-Col-umns Add-Round-Key}
+
+\setlength{\parskip}{12pt}
+\setlength{\parindent}{0pt}
+
+\newcommand{\sbc}{\emph{Spark-Byte-Count-2}\xspace}
+
+\begin{document}
+
+\begin{center}
+\Large Timing Analysis of\\
+\Large Spark email Scan, Saved to HDFS Files
+\end{center}
+
+Computation consists of scanning for email addresses and writing results to files in HDFS, one file per split, one directory per media image, across 400 media images.
+
+Timing is performed on the Grace compute cluster within Hamming at NPS.
+
+Three runs of 400 files are timed with varying allowed cores and loads as follows:
+\begin{compactitem}
+\item 400 virtual cores.
+\item 800 virtual cores but with an irrelated job running, specifically, the job ran from 16:35 to 19:28 with another job which ran from 18:03 to 19:15.
+\item 1200 virtual cores.
+\end{compactitem}
+
+\subsubsection* {Timing Results}
+
+\begin{figure}[H]
+  \center
+  \includegraphics[scale=0.52]{out_logfile400}
+  \caption*{400 virtual cores, 3.32GB/Sec.}
+\end{figure}
+
+\begin{figure}[H]
+  \center
+  \includegraphics[scale=0.52]{out_logfile800}
+  \caption*{800 virtual cores plus another job, 1.86GB/Sec.}
+\end{figure}
+
+\begin{figure}[H]
+  \center
+  \includegraphics[scale=0.52]{out_logfile1200}
+  \caption*{1200 virtual cores, 3.45GB/Sec.}
+\end{figure}
+
+
+\subsubsection*{Conclusions}
+\begin{compactitem}
+\item The email scan jobs are distributed across the compute cluster based on cluster size and availability.
+\end{compactitem}
+
+\subsubsection*{Future Work}
+We will save email matches using HBase, Apache's distributed big data store:
+\begin{compactitem}
+\item This should improve concurrent processing across multiple media images.
+\item This will allow centralized access to features found across all media images.
+\end{compactitem}
+
+\end{document}
+
