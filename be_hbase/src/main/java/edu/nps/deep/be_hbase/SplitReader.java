@@ -91,6 +91,11 @@ public final class SplitReader extends java.io.Reader {
     return splitSize;
   }
 
+  // media iamge name
+  public String getFilename() {
+    return ((FileSplit)inputSplit).getPath().toString();
+  }
+
   // get a reader compatible with java.io.Reader
   public static SplitReader getReader(InputSplit split,
                                       TaskAttemptContext context)

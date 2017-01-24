@@ -4,6 +4,7 @@
 package edu.nps.deep.be_hbase;
 
 import java.io.IOException;
+import java.util.Iterator;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -25,10 +26,12 @@ import scala.Tuple2;
  */
 public final class EmailReader
                          extends org.apache.hadoop.mapreduce.RecordReader<
-                         Long, Features> {
+                         Long, Feature> {
 
-  private Features features = new Features();
-  private boolean isDone = false;
+  private Features features;
+  private Feature feature;
+  private boolean isParsed = false;
+  private Iterator<Feature> iterator = features.iterator();
   private SplitReader splitReader;
 
   @Override
@@ -43,30 +46,30 @@ public final class EmailReader
 
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
-//System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzz nextKeyValue.a");
-    // only call this once
-    if (isDone) {
-//System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzz nextKeyValue.b");
-      return false;
-    } else {
-//System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzz nextKeyValue.c");
-      isDone = true;
+
+    // maybe parse the split into features
+    if (!isParsed) {
+      // parse the whole split and capture all email features
+      BinaryLexer l = new BinaryLexer(splitReader);
+      do {
+        l.yylex();
+      } while (!l.at_eof());
+
+      // make reference to the found email features
+      features = l.features;
+      iterator = features.iterator();
+
+      // now parsed
+      isParsed = true;
     }
 
-    // parse the whole split and capture all email features
-    BinaryLexer l = new BinaryLexer(splitReader);
-    do {
-      l.yylex();
-    } while (!l.at_eof());
-
-    // make reference to the found email features
-    features = l.features;
-
-    // done if no features found
-    if (features.size() == 0) {
+    // maybe done
+    if (iterator.hasNext() == false) {
       return false;
     }
 
+    // stage the next feature
+    feature = iterator.next();
     return true;
   }
 
@@ -76,14 +79,13 @@ public final class EmailReader
   }
 
   @Override
-  public Features getCurrentValue()
-                              throws IOException, InterruptedException {
-    return features;
+  public Feature getCurrentValue() throws IOException, InterruptedException {
+    return feature;
   }
 
   @Override
   public float getProgress() throws IOException {
-    return (isDone == true) ? 1.0f : 0.0f;
+    return (iterator.hasNext()) ? 0.0f : 1.0f;
   }
 
   @Override

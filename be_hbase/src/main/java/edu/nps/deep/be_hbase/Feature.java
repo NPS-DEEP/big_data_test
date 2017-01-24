@@ -6,18 +6,21 @@ package edu.nps.deep.be_hbase;
  */
 public final class Feature {
 
+  public final String filename;
   public final String path;
   public final String feature;
   public final String context;
 
-  public Feature(String path, String feature, String context) {
+  public Feature(String filename, String path, String feature, String context) {
     this.path = path;
+    this.filename = filename;
     this.feature = feature;
     this.context = context;
   }
 
   public String toString() {
-    return path + ", '" + feature + "', '" + context + "'";
+    return "'" + filename + "', '" + path + "', '" +
+                 feature + "', '" + context + "'";
   }
 }
 

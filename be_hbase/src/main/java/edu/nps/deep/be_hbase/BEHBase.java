@@ -1,6 +1,7 @@
-// based loosely on Spark examples and
+// Please see Apache docs and examples:
 // http://spark.apache.org/docs/latest/programming-guide.html
-
+// https://hbase.apache.org/book.html
+// https://www.codatlas.com/github.com/apache/hbase/HEAD/hbase-spark/src/main/java/org/apache/hadoop/hbase/spark/example/hbasecontext/JavaHBaseBulkPutExample.java
 package edu.nps.deep.be_hbase;
 
 import java.io.IOException;
@@ -15,6 +16,11 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Put;  //zz ?
+import org.apache.hadoop.hbase.spark.JavaHBaseContext;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaFutureAction;
@@ -34,11 +40,11 @@ public final class BEHBase{
   // ************************************************************
   public static class SplitFileInputFormat
         extends org.apache.hadoop.mapreduce.lib.input.FileInputFormat<
-                         Long, Features> {
+                         Long, Feature> {
 
     // createRecordReader returns EmailReader
     @Override
-    public org.apache.hadoop.mapreduce.RecordReader<Long, Features>
+    public org.apache.hadoop.mapreduce.RecordReader<Long, Feature>
            createRecordReader(
                  org.apache.hadoop.mapreduce.InputSplit split,
                  org.apache.hadoop.mapreduce.TaskAttemptContext context)
@@ -81,8 +87,11 @@ System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz createRecordReader");
     // set up the Spark context
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
 
-    // several hadoop functions return IOException
     try {
+
+      // get the hadoop job
+      Job hadoopJob = Job.getInstance(sparkContext.hadoopConfiguration(),
+                    "Spark HBase job");
 
       // get the file system
       FileSystem fileSystem =
@@ -110,35 +119,29 @@ System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz createRecordReader");
         System.out.println("adding " + locatedFileStatus.getLen() +
                   " bytes at path " + locatedFileStatus.getPath().toString());
 
-        // get a hadoop job
-        Job hadoopJob = Job.getInstance(sparkContext.hadoopConfiguration(),
-                    "Job for file " + locatedFileStatus.getPath().toString());
-
         // add this file to the job
         FileInputFormat.addInputPath(hadoopJob, locatedFileStatus.getPath());
         totalBytes += locatedFileStatus.getLen();
+      }
 
-        // define the RDD of byte histograms for splits for this job
-        JavaPairRDD<Long, Features> rdd = sparkContext.newAPIHadoopRDD(
+      // Transformation: create the pairRDD for all the files and splits
+      JavaPairRDD<Long, Feature> pairRDD = sparkContext.newAPIHadoopRDD(
                hadoopJob.getConfiguration(),         // configuration
                SplitFileInputFormat.class,           // F
                Long.class,                           // K
-               Features.class);                      // V
+               Feature.class);                       // V
 
-        // feature file name is feature_email_<filename suffix>_<timestamp>
-        String filenameSuffix = locatedFileStatus.getPath().getName();
-        String timestamp = new SimpleDateFormat(
-                          "yyyy-MM-dd hh-mm-ss'.tsv'").format(new Date());
-        String featureFile = "feature_email_" + filenameSuffix +
-                             "_" + timestamp;
+      // get RDD from pairRDD
+      JavaRDD<Feature> rdd = pairRDD.values();
 
-        // create the feature writer
-        FeatureWriterVoidFunction writer =
-                                new FeatureWriterVoidFunction(featureFile);
-
-        // perform the write action
-        rdd.foreach(writer);
-      }
+      // Action: put RDD into HBase
+      Configuration hbaseConfiguration = HBaseConfiguration.create();
+      JavaHBaseContext hbaseContext = new JavaHBaseContext(
+                                         sparkContext, hbaseConfiguration);
+      String tableName = "rdc_feature_table";
+      hbaseContext.bulkPut(rdd,
+                           TableName.valueOf(tableName),
+                           new FeaturePutFunction());
 
       // show the total bytes processed
       System.out.println("total bytes processed: " + totalBytes);
@@ -146,10 +149,8 @@ System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz createRecordReader");
       // Done
       System.out.println("Done.");
 
-//    }  catch (IOException|InterruptedException|ExecutionException e) {
     }  catch (IOException e) {
       throw new RuntimeException(e);
-//      System.exit(1);
     }
   }
 }
