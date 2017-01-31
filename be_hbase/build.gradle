@@ -64,7 +64,7 @@ task run3(overwrite: true, type: Exec, dependsOn: [assemble]) {
   args = ["--class","edu.nps.deep.be_hbase.BEHBase", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_hbase/build/libs/be_hbase-${version}.jar", "/user/tjandrze/DEEP/input"]
 }
 
-k run4(overwrite: true, type: Exec, dependsOn: [assemble]) {
+task run4(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'
   args = ["--class","edu.nps.deep.be_hbase.BEHBase", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_hbase/build/libs/be_hbase-${version}.jar", "/user/bdallen/email_dir"]
 }
