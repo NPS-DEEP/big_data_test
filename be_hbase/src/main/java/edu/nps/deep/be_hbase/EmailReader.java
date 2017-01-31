@@ -31,7 +31,7 @@ public final class EmailReader
   private Features features;
   private Feature feature;
   private boolean isParsed = false;
-  private Iterator<Feature> iterator = features.iterator();
+  private Iterator<Feature> iterator;
   private SplitReader splitReader;
 
   @Override
