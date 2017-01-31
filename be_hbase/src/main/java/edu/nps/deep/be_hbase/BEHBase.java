@@ -110,10 +110,10 @@ System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz createRecordReader");
         // get file status for this file
         LocatedFileStatus locatedFileStatus = fileStatusListIterator.next();
 
-        // restrict number of files to process or else comment this out
-        if (++i > 2) {
-          break;
-        }
+//        // restrict number of files to process or else comment this out
+//        if (++i > 2) {
+//          break;
+//        }
 
         // show file being added
         System.out.println("adding " + locatedFileStatus.getLen() +
@@ -138,7 +138,7 @@ System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz createRecordReader");
       Configuration hbaseConfiguration = HBaseConfiguration.create();
       JavaHBaseContext hbaseContext = new JavaHBaseContext(
                                          sparkContext, hbaseConfiguration);
-      String tableName = "rdc_feature_table";
+      String tableName = "rdc_feature_table5";
       hbaseContext.bulkPut(rdd,
                            TableName.valueOf(tableName),
                            new FeaturePutFunction());
