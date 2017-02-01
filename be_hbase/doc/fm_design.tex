@@ -1,0 +1,97 @@
+
+%\documentclass[10pt,twoside,twocolumn]{article}
+\documentclass[12pt,twoside]{article}
+\usepackage[bf,small]{caption}
+\usepackage[letterpaper,hmargin=1in,vmargin=1in]{geometry}
+\usepackage{paralist} % comapctitem, compactdesc, compactenum
+\usepackage{titlesec}
+\usepackage{titletoc}
+\usepackage{times}
+\usepackage{hyperref}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\graphicspath{{./graphics/}}
+\usepackage{xspace}
+\usepackage{verbatim}
+\usepackage{url}
+\usepackage{float}
+\hyphenation{Sub-Bytes Shift-Rows Mix-Col-umns Add-Round-Key}
+
+\setlength{\parskip}{12pt}
+\setlength{\parindent}{0pt}
+
+\newcommand{\hb}{\emph{HBase}\xspace}
+\newcommand{\fm}{\emph{Feature Miner}\xspace}
+\newcommand{\ffm}{\emph{Forensic Feature Miner}\xspace}
+
+\begin{document}
+
+\begin{center}
+\Large Design considerations for an HBase feature scanner
+\end{center}
+
+Proposed project name: \fm or \ffm
+
+This paper provides a log of design considerations toward creating an HBase feature scanner.
+
+\section*{\fm Capabilities}
+\begin{compactitem}
+\item Rapidly ingest features from media images into an HBase data store.
+\item Easily add media images into an HBase data store.
+\item Store multiple feature classes: email addresses, facebook data, more.
+\item Perform TF-IDF and other analytics on feature classes.
+\item Perform TF-IDF and other analytics from a desktop client.
+\end{compactitem}
+
+\section*{The Data Store}
+The data store must fill these requirements:
+\begin{compactitem}
+\item Scalable to billions of records.
+\item Distributed across a compute cluster.
+\item Organized for efficient storage/retrieval.
+\item Fault tolerant.
+\end{compactitem}
+
+A data record is defined as:\\
+\texttt{Row Key, Col Family, Col Qualifier $=$ Value}\\
+
+Data records consist of:
+\begin{compactitem}
+\item \textbf{Row Key} - The key used to retrieve this row of data. We use the feature class, for example \texttt{email}, followed by a comma followed by the feature text, for example \texttt{someone@somewhere.com}.
+\item \textbf{Column Key} - Column information, consisting of \textbf{Column Family} and \textbf{Column Qualifier}.
+  \begin{compactitem}
+  \item \textbf{Column Family} - Not used, we use \texttt{f}. A family name can delineate column categories such as columls with different compression requiremtnts or access requirements.
+  \item \textbf{Column Qualifier} - The column name.  We use it to store the (media iamge name, media image offset) tuple identifying a location where the feature is found, for example \texttt{myimage,1000}.
+  \end{compactitem}
+\item \textbf{Value} - The value for the data record.  The value provides feature context. For email, this is the actual bytes of the email address plus some bytes before and after it. Note that we store the value even though it can be retrieved by knowing the feature class and location of the feature.
+\end{compactitem}
+
+\section*{Storage}
+HBase describes data records as a sparse table. Internally, HBase is a collection of (key, value) pairs. We store (key, value) records as (feature, feature metadata) tuples where the key is the feature as a (feature class, feature text) tuple, and the value is a (feature location, feature context) tuple.
+
+For one column family, which is what we have, HBase stores these (key, value) data records in one file.
+When the file gets too large ($>$8GB), HBase splits it in two based lexicographically on the row key.  HBase does not split records for the same key across files, so we need to make sure our rows do not get larger than 8GB.  So for example if we have an email row with one million 200-byte columns, it will consume 200MB, which is much less than 8GB, so this is fine.
+
+\section*{Lookup}
+\subsection*{Filters}
+We retrieve specific rows of the store based on specific filters we provide. Filters work by applying comparators (such as $=$ or $<$) to parts of the data record (such as Column Qualifier).  Pre-built filters work on bytes. If needed, we can write custom filters that convert bytes to data structures and compare data structures.
+
+\subsection*{Whole-class Analysis}
+For analyzing all data in a class, such as all email addresses, we iterate over every record in the store, which can be slow. To mitigate this, we do the following:
+
+\begin{compactitem}
+\item We use filters that run on the data servers and return a list of rows to the requesting client (watch out for requesting too large of a list).
+\item We may find a scatter/gather strategy for analyzing data on servers and then collating results on the client.
+\end{compactitem}
+
+\section*{Client usability}
+\begin{compactitem}
+\item The end user will want to issue canned queries and will not want to make their own.
+\item The end user will want to issue queries from a remote desktop.
+\item Our solution should be generic so that \fm serves as a design model for other big-data tools.
+\end{compactitem}
+
+
+
+\end{document}
+
