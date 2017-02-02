@@ -1,0 +1,61 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'idea'
+
+group = 'NPS_DEEP'
+version = '0.0.0'
+
+project.ext {
+  sparkVersion = '2.0.1'
+  hbaseVersion = '1.2.4'
+}
+
+jar {
+  baseName = 'be_hbase_tools'
+  version =  version
+  dependsOn configurations.runtime
+  from {
+    (configurations.runtime - configurations.provided).collect {
+      it.isDirectory() ? it : zipTree(it)
+    }
+  } {
+    exclude "META-INF/*.SF"
+    exclude "META-INF/*.DSA"
+    exclude "META-INF/*.RSA"
+  }
+}
+
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven {
+        url "https://repository.cloudera.com/content/repositories/releases"
+    }
+}
+
+configurations {
+    provided
+    compile.extendsFrom provided
+}
+
+dependencies {
+  //spark
+  provided "org.apache.spark:spark-core_2.11:${sparkVersion}"
+  //hbase
+  provided "org.apache.hbase:hbase-common:${hbaseVersion}"
+  provided "org.apache.hbase:hbase-client:${hbaseVersion}"
+  provided "org.apache.hbase:hbase-server:${hbaseVersion}"
+//  provided "org.apache.hbase:hbase-spark:${hbaseVersion}"
+  provided "org.apache.hbase:hbase-spark:1.2.0-cdh5.9.1"
+}
+
+// http://stackoverflow.com/questions/28610015/run-main-method-using-gradle-run-task
+task run3(overwrite: true, type: JavaExec, dependsOn: [assemble]) {
+  classpath sourceSets.main.runtimeClasspath
+  main = "edu.nps.deep.be_hbase_tools/EmailHistogram"
+  args = []
+}
+
