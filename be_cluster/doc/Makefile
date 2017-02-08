@@ -1,5 +1,6 @@
 plots = out_logfile400.png \
         out_logfile800.png \
+        out_logfile800_2.png \
         out_logfile1200.png
 
 performance_report: performance_report.tex $(plots)
@@ -10,6 +11,9 @@ out_logfile400.png: logfile400
 
 out_logfile800.png: logfile800
 	./plot_dots.py logfile800
+
+out_logfile800_2.png: logfile800_2
+	./plot_dots.py logfile800_2
 
 out_logfile1200.png: logfile1200
 	./plot_dots.py logfile1200

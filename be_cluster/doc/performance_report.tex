@@ -36,6 +36,7 @@ Timing is performed on the Grace compute cluster within Hamming at NPS.
 Three runs of 400 files are timed with varying allowed cores and loads as follows:
 \begin{compactitem}
 \item 400 virtual cores.
+\item 800 virtual cores.
 \item 800 virtual cores but with an irrelated job running, specifically, the job ran from 16:35 to 19:28 with another job which ran from 18:03 to 19:15.
 \item 1200 virtual cores.
 \end{compactitem}
@@ -46,6 +47,12 @@ Three runs of 400 files are timed with varying allowed cores and loads as follow
   \center
   \includegraphics[scale=0.52]{out_logfile400}
   \caption*{400 virtual cores, 3.32GB/Sec.}
+\end{figure}
+
+\begin{figure}[H]
+  \center
+  \includegraphics[scale=0.52]{out_logfile800_2}
+  \caption*{800 virtual cores, 4.04GB/Sec.}
 \end{figure}
 
 \begin{figure}[H]
