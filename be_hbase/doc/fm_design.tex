@@ -91,6 +91,55 @@ For analyzing all data in a class, such as all email addresses, we iterate over 
 \item Our solution should be generic so that \fm serves as a design model for other big-data tools.
 \end{compactitem}
 
+\section*{February 7, 2017}
+We want to support similarity and contiguity.  We pick email addresses for our discussion:
+
+\begin{compactitem}
+\item \textbf{Similarity} - Email addresses have similarity if they are identical but appear in different places. The key is the email address and the values are the columns containing (image, offset) tuples of places containing that email address.
+\item \textbf{Contiguity} - Email addresses have contiguity if they are separated by similar data.  The key is the location (image, offset tuple) of an email address.  The values are email addresses nearby.
+\end{compactitem}
+
+\subsection*{Defining Contiguity}
+An approach discussed is to track the MD5 of the block containing an email address.  Adjacent email addresses on other drives would be in blocks adjacent to the block with the MD5.
+
+The problem with this is that blocks across the media image are ordered by file and nothing else.  When blocks adjacent to a matching MD5 block do not match, this indicates that the blocks are from different files and thus are totally irrelated.
+
+The following section proposes a filesystem-based analysis rather than a raw-block analysis.
+
+\subsection*{File-based Three-tiered Many-to-many Lookup}
+This section proposes a file-based three-tiered many-to-many bimap lookup scheme for finding similarity between media images, files, and artifacts as shown in Figure \ref{fig:threeTierBimap}.
+
+\begin{figure}
+	\center
+	\includegraphics[scale=.45]{three_tier_bimap}
+	\caption{Three-tier bimap}
+	\label{fig:threeTierBimap}
+\end{figure}
+
+The three tiers are:
+\begin{compactitem}
+\item Media images, identified by their MD5.
+\item Files, identified by their MD5.
+\item Artifacts, identified by tuple (artifact class, artifact content, artifact offset), for example \texttt{email,a@b.com, 1000}.
+\end{compactitem}
+
+The bimaps are implemented as four (key, value) maps:
+\begin{compactitem}
+\item \verb+media_to_file+ maps media image MD5 values to filename MD5 values for all files in the media image.
+\item \verb+file_to_media+ maps filename MD5 values to media image MD5 values for all media images containing the file.
+\item \verb+file_to_artifact+ maps filename MD5 values to (class, artifact, offset) artifact tuples.
+\item \verb+artifact_to_file+ maps (class, artifact, offset) tuples to filename MD5 values. Note that the artifact tuples are lexicographically ordered. This allows ordered lookup of filename MD5 values when the offset field is not needed.
+\end{compactitem}
+
+An example search is: What media images contain email address \verb+a@b.com+ and all email addresses adjacent to \verb+a@b.com+ in file MD5 1?
+
+\begin{enumerate}
+\item Get the list of email addresses in file MD5 1.
+\item For each email address in the list: get the list of associated file MD5 values.
+\item For each file MD5 value in the list: get the list of associated media iamge MD5 values.
+\item Return the list of associated media iamge MD5 values.
+\end{enumerate}
+
 
 
 \end{document}

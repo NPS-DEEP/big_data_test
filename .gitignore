@@ -12,6 +12,11 @@ python/temp*
 BinaryLexer.java
 BinaryLexer.java~
 
+# Latex
+*.aux
+*.out
+*.pdf
+
 # sbt specific
 .cache
 .history

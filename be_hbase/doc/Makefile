@@ -1,8 +1,14 @@
+drawings = three_tier_bimap.pdf
 
-fm_design: fm_design.tex
+.SUFFIXES: .svg .pdf
+
+.svg.pdf:
+	inkscape --without-gui -D --export-pdf=$@ $<
+
+fm_design: fm_design.tex $(drawings)
 	pdflatex fm_design.tex
 
 clean:
 	rm -rf out_logfile*.png fm_design.aux fm_design.log \
-	fm_design.out fm_design.pdf
+	fm_design.out *.pdf
 
