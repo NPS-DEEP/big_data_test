@@ -20,6 +20,11 @@
 \setlength{\parskip}{12pt}
 \setlength{\parindent}{0pt}
 
+\newcommand \hdb {\textit{hashdb}\xspace}
+\newcommand \sscope {\textit{SectorScope}\xspace}
+\newcommand \aut {\textbf{Autopsy}\xspace}
+\newcommand \bulk {\textbf{bulk\_extractor}\xspace}
+
 \newcommand{\hb}{\emph{HBase}\xspace}
 \newcommand{\fm}{\emph{Feature Miner}\xspace}
 \newcommand{\ffm}{\emph{Forensic Feature Miner}\xspace}
@@ -34,7 +39,7 @@ Proposed project name: \fm or \ffm
 
 This paper provides a log of design considerations toward creating an HBase feature scanner.
 
-\section*{\fm Capabilities}
+\section{\fm Capabilities}
 \begin{compactitem}
 \item Rapidly ingest features from media images into an HBase data store.
 \item Easily add media images into an HBase data store.
@@ -43,7 +48,7 @@ This paper provides a log of design considerations toward creating an HBase feat
 \item Perform TF-IDF and other analytics from a desktop client.
 \end{compactitem}
 
-\section*{The Data Store}
+\section{The Data Store}
 The data store must fill these requirements:
 \begin{compactitem}
 \item Scalable to billions of records.
@@ -66,17 +71,17 @@ Data records consist of:
 \item \textbf{Value} - The value for the data record.  The value provides feature context. For email, this is the actual bytes of the email address plus some bytes before and after it. Note that we store the value even though it can be retrieved by knowing the feature class and location of the feature.
 \end{compactitem}
 
-\section*{Storage}
+\section{Storage}
 HBase describes data records as a sparse table. Internally, HBase is a collection of (key, value) pairs. We store (key, value) records as (feature, feature metadata) tuples where the key is the feature as a (feature class, feature text) tuple, and the value is a (feature location, feature context) tuple.
 
 For one column family, which is what we have, HBase stores these (key, value) data records in one file.
 When the file gets too large ($>$8GB), HBase splits it in two based lexicographically on the row key.  HBase does not split records for the same key across files, so we need to make sure our rows do not get larger than 8GB.  So for example if we have an email row with one million 200-byte columns, it will consume 200MB, which is much less than 8GB, so this is fine.
 
-\section*{Lookup}
-\subsection*{Filters}
+\section{Lookup}
+\subsection{Filters}
 We retrieve specific rows of the store based on specific filters we provide. Filters work by applying comparators (such as $=$ or $<$) to parts of the data record (such as Column Qualifier).  Pre-built filters work on bytes. If needed, we can write custom filters that convert bytes to data structures and compare data structures.
 
-\subsection*{Whole-class Analysis}
+\subsection{Whole-class Analysis}
 For analyzing all data in a class, such as all email addresses, we iterate over every record in the store, which can be slow. To mitigate this, we do the following:
 
 \begin{compactitem}
@@ -84,14 +89,14 @@ For analyzing all data in a class, such as all email addresses, we iterate over 
 \item We may find a scatter/gather strategy for analyzing data on servers and then collating results on the client.
 \end{compactitem}
 
-\section*{Client usability}
+\section{Client usability}
 \begin{compactitem}
 \item The end user will want to issue canned queries and will not want to make their own.
 \item The end user will want to issue queries from a remote desktop.
 \item Our solution should be generic so that \fm serves as a design model for other big-data tools.
 \end{compactitem}
 
-\section*{February 7, 2017}
+\section{February 7, 2017}
 We want to support similarity and contiguity.  We pick email addresses for our discussion:
 
 \begin{compactitem}
@@ -99,20 +104,33 @@ We want to support similarity and contiguity.  We pick email addresses for our d
 \item \textbf{Contiguity} - Email addresses have contiguity if they are separated by similar data.  The key is the location (image, offset tuple) of an email address.  The values are email addresses nearby.
 \end{compactitem}
 
-\subsection*{Defining Contiguity}
+\subsection{Defining Contiguity}
 An approach discussed is to track the MD5 of the block containing an email address.  Adjacent email addresses on other drives would be in blocks adjacent to the block with the MD5.
 
-The problem with this is that blocks across the media image are ordered by file and nothing else.  When blocks adjacent to a matching MD5 block do not match, this indicates that the blocks are from different files and thus are totally irrelated.
+The problem with this is that blocks across the media image are ordered by file and nothing else.  When blocks adjacent to a matching MD5 block do not match, this indicates that the blocks are from different files and thus are totally irrelated.  The file-based similarity section proposes a filesystem-based analysis rather than a raw-block analysis.
 
-The following section proposes a filesystem-based analysis rather than a raw-block analysis.
+\subsection{Vocabulary}
+\begin{compactitem}
+\item \textit{Feature} changes to \textit{Artifact}.  \bulk features are forensic artifacts.
+\item \textit{Feature type} changes to \textit{Class} to be in line with data classification, for example email class or facebook ID class.
+\end{compactitem}
 
-\subsection*{File-based Three-tiered Many-to-many Lookup}
-This section proposes a file-based three-tiered many-to-many bimap lookup scheme for finding similarity between media images, files, and artifacts as shown in Figure \ref{fig:threeTierBimap}.
+\section{Finding Similarity between Media Images}
+This section presents several approaches for identifying cross-drive similarity:
+\begin{compactitem}
+\item Artifact similarity based on file membership.
+\item Media image similarity based on data similarity, specifically, matching data blocks.
+\item Artifact similarity based on byte proximity.
+\end{compactitem}
+
+
+\subsection{Artifact Similarity Based on File Membership}
+This section proposes a file-based three-tiered many-to-many bimap lookup scheme for finding cross-drive artifact similarity as shown in Figure \ref{fig:threeTierBimap}.
 
 \begin{figure}
 	\center
 	\includegraphics[scale=.45]{three_tier_bimap}
-	\caption{Three-tier bimap}
+	\caption{Three-tier bimap for detecting artifact similarity}
 	\label{fig:threeTierBimap}
 \end{figure}
 
@@ -137,10 +155,62 @@ An example search is: What media images contain email address \verb+a@b.com+ and
 \item Get the list of email addresses in file MD5 1.
 \item For each email address in the list: get the list of associated file MD5 values.
 \item For each file MD5 value in the list: get the list of associated media iamge MD5 values.
-\item Return the list of associated media iamge MD5 values.
+\item Return the list of associated media image MD5 values.
 \end{enumerate}
 
+\subsection{Media Image Similarity}
+We can detect media image similarity by comparing similar blocks between media images using media and block MD5 hashes as shown in Figure \ref{fig:blockSimilarity}.  We store a bimap between media image MD5 values and block MD5 values. We choose 512-byte blocks rather than 4K or larger blocks because file systems can align blocks along a 512-byte offset skew.
 
+\begin{figure}
+	\center
+	\includegraphics[scale=.45]{block_similarity}
+	\caption{Bimap for detecting block similarity}
+	\label{fig:blockSimilarity}
+\end{figure}
+
+The bimap is implemented as two (key, value) maps:
+\begin{compactitem}
+\item \verb+media_to_block+ maps media image MD5 values to block MD5 values:
+  \begin{compactitem}
+  \item Key: tuple (media image MD5, offset / 1 trillion). The offset / 1 trillion part splits the key to managable sizes so that its record size is less than 8GB.
+  \item Data: tuple (block MD5, offset).
+  \end{compactitem}
+\item \verb+block_to_media+ maps block MD5 values to media image MD5 values:
+  \begin{compactitem}
+  \item Key: block MD5.
+  \item Data: tuple (media image MD5, offset). To be compatible with scalability, blocks of all-zero bytes are skipped.
+  \end{compactitem}
+\end{compactitem}
+
+We use \verb+media_to_block+ to get the list of blocks associated with a media image.
+We use \verb+block_to_media+ to get the list of media images associated with a block.
+
+
+\subsection{Artifact Similarity Based on Byte Proximity}
+In this approach, we identify artifact relations based on artifact closeness. For example we may say two artifacts are related if they are within 1,000 bytes of each other.
+
+Note that this approach is different from a file-based approach where artifacts are related if they are in the same file. Here are some differences:
+
+\begin{compactitem}
+\item Processing contiguous sectors is more efficient than processing files.
+\item Processing contiguous sectors catches artifacts in free-space.
+\item Processing contiguous sectors can produce false positives when artifacts are in adjacent sectors but are not in the same file.
+\end{compactitem}
+
+This approach uses one map which maps (image, offset) tuples to artifacts as shown in Figure \ref{fig:offsetSimilarity}. The map is implemented using (key, value) pairs as follows:
+
+\begin{figure}
+	\center
+	\includegraphics[scale=.45]{offset_similarity}
+	\caption{Map for detecting artifact similarity}
+	\label{fig:offsetSimilarity}
+\end{figure}
+
+\begin{compactitem}
+\item \verb+image_to_artifact+ maps (image, offset / 1 trillion) tuples to (class, artifact, offset) tuples.
+\end{compactitem}
+
+Once the map is populated, feature similarity within a media is calculated by iterating through the values for adjacent artifacts.
 
 \end{document}
 

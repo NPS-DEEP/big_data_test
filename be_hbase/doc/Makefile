@@ -1,4 +1,4 @@
-drawings = three_tier_bimap.pdf
+drawings = three_tier_bimap.pdf block_similarity.pdf offset_similarity.pdf
 
 .SUFFIXES: .svg .pdf
 
