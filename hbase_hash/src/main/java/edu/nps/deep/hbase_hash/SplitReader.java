@@ -215,6 +215,7 @@ public final class SplitReader extends java.io.Reader {
   public String readMD5(int blockSize) {
     // done if there are not enough bytes left to hash a whole block
     if (bufferHead + blockSize > bufferSize) {
+      bufferHead = blockSize;
       return "";
     }
 
@@ -225,6 +226,15 @@ public final class SplitReader extends java.io.Reader {
 
     // convert to hexdigest
     return bytesToHex(digestBytes);
+  }
+
+  // progress is defined by how close bufferHead is to bufferSize
+  public float getProgress() {
+    if (bufferSize == 0) {
+      return 0.0f;
+    } else {
+      return bufferHead / (float)bufferSize;
+    }
   }
 }
 

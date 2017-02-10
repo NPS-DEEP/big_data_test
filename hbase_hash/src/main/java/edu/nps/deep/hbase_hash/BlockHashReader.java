@@ -33,7 +33,6 @@ public final class BlockHashReader
   private SplitReader splitReader;
   private String fileName;
   private long splitOffset;
-  private float progress;
 
   @Override
   public void initialize(
@@ -45,7 +44,6 @@ public final class BlockHashReader
     splitReader = SplitReader.getReader(split, context);
     fileName = splitReader.getFilename();
     splitOffset = splitReader.getSplitOffset();
-    progress = 0.0f;
   }
 
   @Override
@@ -56,7 +54,6 @@ public final class BlockHashReader
 
     // maybe done
     if (blockHexdigest.length() == 0) {
-      progress = 1.0f;
       hashRecord = null;
       return false;
     }
@@ -80,7 +77,7 @@ public final class BlockHashReader
 
   @Override
   public float getProgress() throws IOException {
-    return progress;
+    return splitReader.getProgress();
   }
 
   @Override
