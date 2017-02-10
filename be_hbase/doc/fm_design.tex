@@ -168,11 +168,11 @@ We can detect media image similarity by comparing similar blocks between media i
 	\label{fig:blockSimilarity}
 \end{figure}
 
-The bimap is implemented as two (key, value) maps:
+The bimap consists of two (key, value) maps:
 \begin{compactitem}
 \item \verb+media_to_block+ maps media image MD5 values to block MD5 values:
   \begin{compactitem}
-  \item Key: tuple (media image MD5, offset / 1 trillion). The offset / 1 trillion part splits the key to managable sizes so that its record size is less than 8GB.
+  \item Key: media image MD5.
   \item Data: tuple (block MD5, offset).
   \end{compactitem}
 \item \verb+block_to_media+ maps block MD5 values to media image MD5 values:
@@ -185,6 +185,24 @@ The bimap is implemented as two (key, value) maps:
 We use \verb+media_to_block+ to get the list of blocks associated with a media image.
 We use \verb+block_to_media+ to get the list of media images associated with a block.
 
+The HBase implementation follows:
+\begin{compactitem}
+\item \verb+media_to_block+
+  \begin{compactitem}
+  \item Row Key: media image MD5 hexdigest + offset / 1 trillion. The offset / 1 trillion part splits the key to manageable sizes so that its record size is less than 8GB.
+  \item Column Family: \verb+f+.
+  \item Column Key: block MD5 hexdigest + offset.
+  \item Cell: \verb+""+.
+  \end{compactitem}
+\item \verb+block_to_media+
+  \begin{compactitem}
+  %\item Row Key: block MD5 hexdigest + first two bytes of media image MD5 hexdigest. The extra bytes splits the key to manageable sizes so that the largest record sizes should be less than 8GB.
+  \item Row Key: block MD5 hexdigest
+  \item Column Family: \verb+f+.
+  \item Column Key: media image MD5 + offset.
+  \item Cell: \verb+""+.
+  \end{compactitem}
+\end{compactitem}
 
 \subsection{Artifact Similarity Based on Byte Proximity}
 In this approach, we identify artifact relations based on artifact closeness. For example we may say two artifacts are related if they are within 1,000 bytes of each other.
