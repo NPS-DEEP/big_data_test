@@ -64,6 +64,7 @@ public final class BlockHashReader
     // create the next hash record
     hashRecord = new HashRecord(fileName, blockHexdigest,
                                 Long.toString(splitOffset));
+    splitOffset += BLOCK_SIZE;
     return true;
   }
 
