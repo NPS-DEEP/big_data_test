@@ -221,6 +221,7 @@ public final class SplitReader extends java.io.Reader {
     // calculate the digest
     messageDigest.update(buffer, bufferHead, blockSize);
     final byte[] digestBytes = messageDigest.digest();
+    bufferHead += blockSize;
 
     // convert to hexdigest
     return bytesToHex(digestBytes);
