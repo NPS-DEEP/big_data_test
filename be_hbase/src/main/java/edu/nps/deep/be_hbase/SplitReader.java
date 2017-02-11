@@ -19,6 +19,8 @@ import scala.Tuple2;
 */
 
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.InputSplit;
@@ -50,10 +52,23 @@ public final class SplitReader extends java.io.Reader {
   private int bufferSize;
   private int bufferHead;
 
+  // support MD5 hashing provided by the readMD5() method
+  private final MessageDigest messageDigest;
+
   private SplitReader(InputSplit split,
                      TaskAttemptContext context) {
     inputSplit = split;
     taskAttemptContext = context;
+    MessageDigest temp = null;
+
+    // use temp so messageDigest can be declared final
+    try {
+      temp = MessageDigest.getInstance("MD5");
+    } catch (NoSuchAlgorithmException e) {
+      // fatal but let null messageDigest fail
+      temp = null;
+    }
+    messageDigest = temp;
   }
 
   // open and return a FSDataInputStream
@@ -126,12 +141,18 @@ public final class SplitReader extends java.io.Reader {
     return reader;
   }
 
+/*
+  // offer this interface to code that wants to access the byte buffer directly.
+  public byte[] exposeBuffer() {
+    return buffer;
+  }
+*/
+
   // ************************************************************
   // public Reader interfaces
   // ************************************************************
 
   // close
-//zz  public void close() throws IOException, InterruptedException {
   public void close() throws IOException {
     IOUtils.closeStream(in);
 //    in.close();
@@ -142,8 +163,8 @@ public final class SplitReader extends java.io.Reader {
     return false;
   }
 
+  // read up to len next bytes into c[off]
   public int read(char[] c, int off, int len)
-//                      throws IOException, InterruptedException {
                       throws IOException {
 //System.out.println("stdout: read: off: " + off + ", len: " + len);
 //System.err.println("stderr: read: off: " + off + ", len: " + len);
@@ -168,6 +189,7 @@ public final class SplitReader extends java.io.Reader {
     return count;
   }
 
+  // read len bytes plus padding and return as feature context string
   public String readContext(int off, int len) {
     final int start = (off - 16 < 0) ? 0 : off - 16;
     final int stop = (off + len + 16 > bufferSize) ? bufferSize : off+len+16;
@@ -176,6 +198,43 @@ public final class SplitReader extends java.io.Reader {
       output.append((char)(0xff & buffer[i]));
     }
     return output.toString();
+  }
+
+  // from http://stackoverflow.com/questions/9655181/how-to-convert-a-byte-array-to-a-hex-string-in-java
+  final private static char[] hexArray = "0123456789ABCDEF".toCharArray();
+  private static String bytesToHex(byte[] bytes) {
+    char[] hexChars = new char[bytes.length * 2];
+    for ( int j = 0; j < bytes.length; j++ ) {
+      int v = bytes[j] & 0xFF;
+      hexChars[j * 2] = hexArray[v >>> 4];
+      hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+    }
+    return new String(hexChars);
+  }
+
+  public String readMD5(int blockSize) {
+    // done if there are not enough bytes left to hash a whole block
+    if (bufferHead + blockSize > bufferSize) {
+      bufferHead = blockSize;
+      return "";
+    }
+
+    // calculate the digest
+    messageDigest.update(buffer, bufferHead, blockSize);
+    final byte[] digestBytes = messageDigest.digest();
+    bufferHead += blockSize;
+
+    // convert to hexdigest
+    return bytesToHex(digestBytes);
+  }
+
+  // progress is defined by how close bufferHead is to bufferSize
+  public float getProgress() {
+    if (bufferSize == 0) {
+      return 0.0f;
+    } else {
+      return bufferHead / (float)bufferSize;
+    }
   }
 }
 

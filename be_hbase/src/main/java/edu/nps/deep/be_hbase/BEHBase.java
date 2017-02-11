@@ -138,7 +138,7 @@ System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz createRecordReader");
       Configuration hbaseConfiguration = HBaseConfiguration.create();
       JavaHBaseContext hbaseContext = new JavaHBaseContext(
                                          sparkContext, hbaseConfiguration);
-      String tableName = "rdc_feature_table5";
+      String tableName = "email_to_image";
       hbaseContext.bulkPut(rdd,
                            TableName.valueOf(tableName),
                            new FeaturePutFunction());

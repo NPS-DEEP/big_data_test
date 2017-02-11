@@ -55,7 +55,7 @@ u_top_level_domain = ({u_tld1}|{u_tld2}|{u_tld3}|{u_tld4})
 [a-zA-Z0-9][a-zA-Z0-9._%\-+]{1,64}@[a-zA-Z0-9._%\-]{1,64}\.{top_level_domain}/[^a-zA-Z]
             { String email = yytext();
 //System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz feature found");
-              features.add(new Feature(filename, Long.toString(count + splitOffset), email, splitReader.readContext((int)count, yylength())));
+              features.add(new Feature(filename, Long.toString(count + splitOffset), email));
               count += yylength();
             }
 
@@ -63,7 +63,7 @@ u_top_level_domain = ({u_tld1}|{u_tld2}|{u_tld3}|{u_tld4})
 [a-zA-Z0-9]\0([a-zA-Z0-9._%\-+]\0){1,64}@\0([a-zA-Z0-9._%\-]\0){1,64}\.\0{u_top_level_domain}/[^a-zA-Z]|([^][^\0])
             { String email = yytext();
 //System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz unicode16 feature found");
-              features.add(new Feature(filename, Long.toString(count + splitOffset), email, splitReader.readContext((int)count, yylength())));
+              features.add(new Feature(filename, Long.toString(count + splitOffset), email));
               count += yylength();
             }
 

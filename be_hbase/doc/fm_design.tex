@@ -121,6 +121,7 @@ This section presents several approaches for identifying cross-drive similarity:
 \item Artifact similarity based on file membership.
 \item Media image similarity based on data similarity, specifically, matching data blocks.
 \item Artifact similarity based on byte proximity.
+\item Cross-drive artifact similarity.
 \end{compactitem}
 
 
@@ -229,6 +230,34 @@ This approach uses one map which maps (image, offset) tuples to artifacts as sho
 \end{compactitem}
 
 Once the map is populated, feature similarity within a media is calculated by iterating through the values for adjacent artifacts.
+
+\subsection{Cross-drive Artifact Similarity}
+We find drives containing a provided email address. An email address can point to multiple offsets and multiple drives, as shown in Figure \ref{fig:artifactSimilarity}.
+
+\begin{figure}
+	\center
+	\includegraphics[scale=.45]{artifact_similarity}
+	\caption{Map for detecting artifacts common across drives}
+	\label{fig:artifactSimilarity}
+\end{figure}
+
+The data store consists of a map:
+\begin{compactitem}
+\item Key: email address.
+\item data: tuple (medi image MD5, offset).
+\end{compactitem}
+
+The HBase implementation consists of one table per artifact class. We describe the email artifact class:
+\begin{compactitem}
+\item \verb+email_to_image+
+  \begin{compactitem}
+  \item Row Key: email address, for example \verb+a@b.com+.
+  \item Column Family: \verb+f+.
+  \item Column Key: media image MD5 + offset.
+  \item Cell: \verb+""+.
+  \end{compactitem}
+\end{compactitem}
+
 
 \end{document}
 
