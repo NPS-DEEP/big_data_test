@@ -49,6 +49,8 @@ public final class EmailReader
 
     // maybe parse the split into features
     if (!isParsed) {
+/*
+      // zzzzzzzzz old way using JFlex
       // parse the whole split and capture all email features
       BinaryLexer l = new BinaryLexer(splitReader);
       do {
@@ -58,6 +60,11 @@ public final class EmailReader
       // make reference to the found email features
       features = l.features;
       iterator = features.iterator();
+*/
+
+      // using ScanEmail instead of BinaryLexer
+      ScanEmail scanner = new ScanEmail(splitReader);
+      iterator = scanner.features.iterator();
 
       // now parsed
       isParsed = true;

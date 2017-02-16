@@ -2,22 +2,8 @@
 
 package edu.nps.deep.be_hbase;
 
+import java.lang.StringBuilder;
 import java.io.IOException;
-import java.util.Iterator;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.RemoteIterator;
-import org.apache.hadoop.fs.LocatedFileStatus;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-
-import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.Function2;
-import scala.Tuple2;
 
 /**
  * Reads all email features in one split and puts them in Features.
@@ -25,17 +11,17 @@ import scala.Tuple2;
 public final class ScanEmail {
 
   private final long splitOffset;
-  private final long splitSize;
+  private final int splitSize;
   private final String filename;
 
   private char[] buffer;
 
   public Features features;
 
-  public ScanEmail(splitReader) {
+  public ScanEmail(SplitReader splitReader) throws IOException {
     // values from splitReader
     splitOffset = splitReader.getSplitOffset();
-    splitSize = splitReader.getSplitSize();
+    splitSize = (int)splitReader.getSplitSize();
     filename = splitReader.getFilename();
 
     // the split as char array
@@ -47,62 +33,173 @@ public final class ScanEmail {
 
     splitReader.read(buffer, 0, splitSize);
 
-    for (long i=1; i< splitSize - 1; i++) {
+    for (int i=1; i< splitSize - 1; i++) {
       if (buffer[i] == '@') {
         if (buffer[i+1] != '\0') {
           // unicode 8
-          long start = findStart(i);
-          if (start == -1) {
+          int start = findStart(i);
+          if (start == i) {
             continue;
           }
-          long stop = findStop(i);
-          if (stop == -1) {
+          int stop = findStop(i);
+          if (stop == i) {
             continue;
           }
-          String feature = String(buffer, start, stop-start);
+
+          // build email address from this
+          String feature = new String(buffer, start, stop-start+1);
+
+          // store the feature
           putFeature(feature, start);
 
         } else {
           // unicode 16
-          long start = findStart16(i);
-          if (start == -1) {
+          int start = findStart16(i);
+          if (start == i) {
             continue;
           }
-          long stop = findStop16(i);
-          if (stop == -1) {
+          int stop = findStop16(i);
+          if (stop == i) {
             continue;
           }
-          String feature = string16(start, stop);
-          putFeature(feature, start);
+
+          // build unicode 8 email address from this
+          StringBuilder sb = new StringBuilder();
+          for (int j=start; j <= stop+1; j+=2) {
+            sb.append(buffer[j]);
+          }
+
+          // store the feature
+          putFeature(sb.toString(), start);
 
         }
       }
     }
   }
 
-  private void putFeature(String feature, long start) {
+  private void putFeature(String feature, int start) {
     features.add(new Feature(filename,
                              Long.toString(start+splitOffset), feature));
   }
 
-  // valid username         = a-z,A-Z,0-9,_,%,-,+,.
-  // valid domain           = a-z,A-Z,0-9,_,%,-,+
-  // valid top level domain = a-z,A-Z
-  // domain separator       = .
-  //
-  //    %     +     -     .     0-9        A-Z        _     a-z
-  //
-  //  0x25, 0x2b, 0x2d, 0x2e, 0x30-0x39, 0x41-0x5a, 0x5f, 0x61-0x7a,
-  private long findStart(long at) {
-    long bottom = at - 1 - 64;
-    if (bottom < 0) {
-      bottom = 0;
+  // from https://en.wikipedia.org/wiki/Email_address
+  // Use RFC 5322 except do not recognize backslash or quoted string.
+  // Specifically: local part <= 64 characters, domain <= 255 characters and
+  // not space or "(),:;<>@[\]
+
+  // find local part of email address, return start else "at" point
+  private int findStart(int at) {
+    int start = at;
+    while (true) {
+      // done if at beginning
+      if (start == 0) {
+        return start;
+      }
+
+      // invalid if local part > 64 bytes long
+      if (at - start > 64) {
+        return at;
+      }
+
+      // done if next char is invalid
+      char c = buffer[start-1];
+      if (c<0x20 || c >0x7f || c=='\"' || c=='(' || c==')' || c==',' ||
+          c==':' || c==';' || c=='<' || c=='>' || c=='@' || c=='[' ||
+          c=='\\' || c==']') {
+        return start;
+      }
+
+      // char is valid so step backwards to it
+      --start;
     }
-    for (long i = at - 1; i >= bottom; i--) {
-      if (buffer[i]
-    long start = at
+  }
+           
+  // find domain part of email address, return stop else "at" point
+  private int findStop(int at) {
+    int stop = at;
+    while (true) {
+      // done if at EOF
+      if (stop == splitSize - 1) {
+        return stop;
+      }
 
+      // invalid if domain part > 256 bytes long
+      if (stop - at > 256) {
+        return at;
+      }
 
+      // done if next char is invalid
+      char c = buffer[stop+1];
+      if (c<0x20 || c >0x7f || c=='\"' || c=='(' || c==')' || c==',' ||
+          c==':' || c==';' || c=='<' || c=='>' || c=='@' || c=='[' ||
+          c=='\\' || c==']') {
+        return stop;
+      }
 
+      // char is valid so step forward to it
+      ++stop;
+    }
+  }
+           
+  // find local part of email address, return start else "at" point
+  private int findStart16(int at) {
+    int start = at;
+    while (true) {
+      // done if at beginning
+      if (start <= 1) {
+        return start;
+      }
+
+      // invalid if local part > 64 bytes long
+      if (at - start > 64 * 2) {
+        return at;
+      }
+
+      // done if next char pair is invalid
+      if (buffer[start-1] != '\0') {
+        return start;
+      }
+      char c = buffer[start-2];
+      if (c<0x20 || c >0x7f || c=='\"' || c=='(' || c==')' || c==',' ||
+          c==':' || c==';' || c=='<' || c=='>' || c=='@' || c=='[' ||
+          c=='\\' || c==']') {
+        return start;
+      }
+
+      // char pair is valid so step backwards to it
+      start -= 2;
+    }
+  }
+           
+  // find domain part of email address, return stop else "at" point
+  // where stop is first byte of last pair
+  private int findStop16(int at) {
+    int stop = at;
+    while (true) {
+      // done if at EOF
+      if (stop >= splitSize - 2) {
+        return stop;
+      }
+
+      // invalid if domain part > 256 bytes long
+      if (stop - at > 256 * 2) {
+        return at;
+      }
+
+      // done if next char is invalid
+      if (buffer[stop+2] != '\0') {
+        return stop;
+      }
+      char c = buffer[stop+1];
+      if (c<0x20 || c >0x7f || c=='\"' || c=='(' || c==')' || c==',' ||
+          c==':' || c==';' || c=='<' || c=='>' || c=='@' || c=='[' ||
+          c=='\\' || c==']') {
+        return stop;
+      }
+
+      // char is valid so step forward to it
+      stop += 2;
+    }
+  }
 }
 
