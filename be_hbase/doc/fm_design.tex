@@ -244,7 +244,7 @@ We find drives containing a provided email address. An email address can point t
 The data store consists of a map:
 \begin{compactitem}
 \item Key: email address.
-\item data: tuple (medi image MD5, offset).
+\item data: tuple (media image MD5, offset).
 \end{compactitem}
 
 The HBase implementation consists of one table per artifact class. We describe the email artifact class:
@@ -257,6 +257,45 @@ The HBase implementation consists of one table per artifact class. We describe t
   \item Cell: \verb+""+.
   \end{compactitem}
 \end{compactitem}
+
+Example usage: Find the top ten drives containing \verb+a@b.com+ and show the email frequency count for each.
+
+\section{February 15, 2017}
+\subsection{Problem with Slow Ingest}
+During email ingest, compute nodes are using up free memory. The problem is the JVM Garbage Collector (GC) is not keeping up with recycling. To fix this, we must reduce how many objects are created during processing.
+
+To start, we need to stop using JFlex because its grammar parsing generates too many temporary objects, \url{https://sourceforge.net/p/jflex/mailman/message/1109702/}.
+
+Next, we need to not create a big array of objects that get pushed into the DB on a second pass; we need to push artifacts into the DB directly, without creating an interim array. The array costs by unnecessarily having objects to create/destroy and by having an extra layer of copying data.
+
+Between these two improvements, GC should be in better control.
+
+\subsection{JFlex Alternative}
+I expect to replace the JFlex parser with a two-step scan process:
+\begin{enumerate}
+\item Iterate through data searching for potential artifacts.
+\item For potential artifacts, run it through a regular epression parser. If valid, take it.
+\end{enumerate}
+For email addresses:
+\begin{enumerate}
+\item Iterate forward through data searching for a \verb+@+ token.
+\item Expect unicode\_16 if the next byte is 0x00.
+\item Step backward from \verb+@+ to find the start.
+\item Step forward from \verb+@+ to find the end.
+\item Run this range through a regular epression parser to check validity.
+\item If valid, store the artifact.
+\item Iterate one byte past this \verb+@+ token.  Repeat.
+\end{enumerate}
+
+\subsection{Replace HBase with Cassandra}
+Article \url{https://www.linkedin.com/pulse/real-comparison-nosql-databases-hbase-cassandra-mongodb-sahu} shows that Cassandra is better for storing Forensic artifacts:
+\begin{compactitem}
+\item Performance is significantly faster.
+\item Unlike HBase, Consistency is not guaranteed. But having a delay to achieve consistency is acceptable.
+\item Both DBs are adequately supported as part of Apache.
+\end{compactitem}
+
+
 
 
 \end{document}
