@@ -26,7 +26,7 @@ public final class ScanEmail {
 
     // the split as char array
     // https://docs.oracle.com/javase/tutorial/java/nutsandbolts/datatypes.html
-    char[] buffer = new char[splitSize];
+    buffer = new char[splitSize];
 
     // storage for the features
     features = new Features();
