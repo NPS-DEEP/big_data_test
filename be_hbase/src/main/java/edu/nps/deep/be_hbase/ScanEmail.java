@@ -4,7 +4,8 @@ package edu.nps.deep.be_hbase;
 
 import java.lang.StringBuilder;
 import java.io.IOException;
-import java.util.Set;
+import java.util.HashSet;
+import java.util.Locale;
 
 /**
  * Reads all email features in one split and puts them in Features.
@@ -14,16 +15,16 @@ public final class ScanEmail {
   private final long splitOffset;
   private final int splitSize;
   private final String filename;
-  private static final Set<String> domainNames = getDomainNames();
+  private static final HashSet<String> domainNames = getDomainNames();
 
   private char[] buffer;
 
   public Features features;
 
-  private static Set<String> getDomainNames() {
+  private static HashSet<String> getDomainNames() {
     String names = "AC|AD|AE|AERO|AF|AG|AI|AL|AM|AN|AO|AQ|AR|ARPA|AS|ASIA|AT|AU|AW|AX|AZ|BA|BB|BD|BE|BF|BG|BH|BI|BIZ|BJ|BL|BM|BN|BO|BR|BS|BT|BV|BW|BY|BZ|CA|CAT|CC|CD|CF|CG|CH|CI|CK|CL|CM|CN|CO|COM|COOP|CR|CU|CV|CX|CY|CZ|DE|DJ|DK|DM|DO|DZ|EC|EDU|EE|EG|EH|ER|ES|ET|EU|FI|FJ|FK|FM|FO|FR|GA|GB|GD|GE|GF|GG|GH|GI|GL|GM|GN|GOV|GP|GQ|GR|GS|GT|GU|GW|GY|HK|HM|HN|HR|HT|HU|ID|IE|IL|IM|IN|INFO|INT|IO|IQ|IR|IS|IT|JE|JM|JO|JOBS|JP|KE|KG|KH|KI|KM|KN|KP|KR|KW|KY|KZ|LA|LB|LC|LI|LK|LR|LS|LT|LU|LV|LY|MA|MC|MD|ME|MF|MG|MH|MIL|MK|ML|MM|MN|MO|MOBI|MP|MQ|MR|MS|MT|MU|MUSEUM|MV|MW|MX|MY|MZ|NA|NAME|NC|NE|NET|NF|NG|NI|NL|NO|NP|NR|NU|NZ|OM|ORG|PA|PE|PF|PG|PH|PK|PL|PM|PN|PR|PRO|PS|PT|PW|PY|QA|RE|RO|RS|RU|RW|SA|SB|SC|SD|SE|SG|SH|SI|SJ|SK|SL|SM|SN|SO|SR|ST|SU|SV|SY|SZ|TC|TD|TEL|TF|TG|TH|TJ|TK|TL|TM|TN|TO|TP|TR|TRAVEL|TT|TV|TW|TZ|UA|UG|UK|UM|US|UY|UZ|VA|VC|VE|VG|VI|VN|VU|WF|WS|YE|YT|YU|ZA|ZM|ZW";
     String[] nameArray = names.split("|");
-    Set<String> nameSet = new nameSet();
+    HashSet<String> nameSet = new HashSet<String>();
     for (String name : nameArray) {
       nameSet.add(name);
     }
@@ -91,8 +92,21 @@ public final class ScanEmail {
   }
 
   private void maybePutFeature(String feature, int start) {
-    if feature.//zzzzzz last part after ".".toUpper()
 
+    // find last dot, it will preceed the domain name
+    final int dotIndex = feature.lastIndexOf('.');
+    if (dotIndex == -1) {
+      // not a valid feature
+      return;
+    }
+
+    // require to recognize the domain name
+    if (!domainNames.contains(feature.substring(dotIndex+1).toUpperCase(Locale.ENGLISH))) {
+      // no valid domain name
+      return;
+    }
+
+    // here, so accept the feature
     features.add(new Feature(filename,
                              Long.toString(start+splitOffset), feature));
   }
