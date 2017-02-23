@@ -295,8 +295,80 @@ Article \url{https://www.linkedin.com/pulse/real-comparison-nosql-databases-hbas
 \item Both DBs are adequately supported as part of Apache.
 \end{compactitem}
 
+\section{February 23, 2017: \hdb Swap Space Bug}
+\subsection{Problem}
+\hdb v3.0.0 fails when adding large amounts of data.
+This is detected on Linux-based systems.
+The problem is that the amount of swap space available is
+insufficient for LMDB.  This is a problem in particular for hashdb V3
+which internally deletes data to add larger entry lists (V2 did not
+delete anything).  From the LMDB article, it appears that swap space is
+consumed when data is deleted.  LMDB never releases allocated virtual memory.\\
+
+Being disk-backed, LMDB never frees allocations and grows really big, in
+particular as a result of performing delete operations (I delete records
+in order to put in replacement records that are longer as source offset
+lists grow).
+
+\subsection{Immediate Solution}
+The immediate solution is to make the swap size really big.
+The preferred solution is to redesign DB usage to not need swap.
+
+\subsection{Localized Solution}
+Being disk-backed, LMDB never frees allocations and grows really big, in
+particular as a result of performing delete operations (I delete records
+in order to put in replacement records that are longer as source offset
+lists grow).
+
+Additionally, the DB build process is slow.
+
+In order to fix my swap-space exhaustion bug and to improve DB build
+speed, I would like to discontinue storing all source offset values in
+the Hash Data Store.  Currently, a configuration parameter allows us to
+store up to 50 source offset values.  The change to the user will be as
+if the option for storing zero source offset values was set.
+
+Additionally, I would like to store source offset sub-counts in two
+bytes, max 65535, instead of as variable-length protobuf numbers.  This
+allows me to edit sub-count in place rather than jarring the DB with a
+delete followed by a larger insert.  Recall that sub-count is the number
+of times a hash has been seen in a particular source, while the total
+count is the number of times a hash has been seen total, for all sources.
+
+This change requires the user to get offsets to hashes within sources as
+a separate operation if they actually need this value.
+
+I believe this change will improve usability and that the loss of having
+source offsets stored in the DB is acceptable.
+
+\subsection{Distributed Solution}
+This solution is proposed by Scott. From Scott:\\
+
+I think you will have to shard the master database so that you can work within RAM on a cluster.  Each node would handle a shard of just hash\_data\_store, and the other tables are solely managed by the master.  From your master, on insert you create an "operation log" or "oplog" stream that is just a sequence of operations to be split out and played on each node.  Each operation would be a simple sequence like "insert sector X offset Y".  Since you are purely appending, this should not consume RAM.
+
+Actually this could work on a single box.  Shard the oplog into separate files, then build each shard one-at-a-time.  Then you could do a merge operation if you want a single monolithic DB above RAM size.  Merges tend to iterate over the databases sequentially, so there should not be terrible random-access RAM pressure.
+
+Also from Scott:\\
+I think you can get a good design with the oplog.  Essentially you can do some work now, some work later so that you do not need to maintain a large memory state.  I could see the oplog as useful for a couple of reasons:
+
+1. Sharding and Replicas.  You pipe only relevant data to the relevant nodes, or do "temporal sharding" where you create the shards sequentially on the same box one at a time.
+
+2. Coalescing.  Sharding is like the first stage of a radix sort.  If you could cache operations before you flush them to the oplog, then you could get sorting and coalescing effects.  For example, you could maintain a list in memory of 100000 memory ops.  If you see the same address (for example, the all-0 block or another high-entropy but repetitive one) then you just increment its count and add it to a list in memory.  When you have memory pressure you flush this in-memory structure to the oplog, producing operations that say things like "increment count by 1234, add [source, [offsets]] to the DB" so part of the work creating the final DB state is accumulated before flushing.  It could also sort the data before flushing to the oplog, potentially making the data faster to merge into the database.
 
 
+I have also been thinking of a multi-level "cache" on the read side too.  When creating hash-store via full table scan of hash-data-store, you could also create a smaller hash-store with the highest count items.  This small database could be copied to all the hasher nodes and used as a prefilter to reduce network traffic to the shards of the full hash-store.
+
+My summary:\\
+For oplog, ref: \url{https://docs.mongodb.com/manual/core/replica-set-oplog/}. An oplog could be used for error recovery.  Its operations are idempotent.
+
+\subsection{Remove Source Offsets}
+Either way, removing source offsets from the store would be good because we figured out how to track count information without them. If required, source offsets can be recalculated from source data offline. \sscope and two other known use-cases do not require it.
+
+\subsection{Remove the \texttt{source\_data\_manager insert} Operation}
+The \verb+source_data_manager+ supports \verb+insert+ and \verb+merge+.
+The \verb+insert+ function increments source count.
+The \verb+merge+ function replaces source count.
+By using an \textit{oplog}, an entire source file is processed up front, so \verb+insert+ is discontinued and is removed.
 
 \end{document}
 
