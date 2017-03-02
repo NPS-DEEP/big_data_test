@@ -1,5 +1,7 @@
 // ref 25.8.5 from http://swig.org/Doc3.0/SWIGDocumentation.html#Java_module_packages_classes
-#include example.h;
+#include <cstdlib>
+#include <cstdio>
+#include "example.h"
 
 void binaryChar1(const char data[], size_t len) {
   printf("len: %d data: ", len);
