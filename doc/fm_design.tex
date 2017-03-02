@@ -22,8 +22,8 @@
 
 \newcommand \hdb {\textit{hashdb}\xspace}
 \newcommand \sscope {\textit{SectorScope}\xspace}
-\newcommand \aut {\textbf{Autopsy}\xspace}
-\newcommand \bulk {\textbf{bulk\_extractor}\xspace}
+\newcommand \aut {\textit{Autopsy}\xspace}
+\newcommand \bulk {\textit{bulk\_extractor}\xspace}
 
 \newcommand{\hb}{\emph{HBase}\xspace}
 \newcommand{\fm}{\emph{Feature Miner}\xspace}
@@ -369,6 +369,21 @@ The \verb+source_data_manager+ supports \verb+insert+ and \verb+merge+.
 The \verb+insert+ function increments source count.
 The \verb+merge+ function replaces source count.
 By using an \textit{oplog}, an entire source file is processed up front, so \verb+insert+ is discontinued and is removed.
+
+\section{March 1, 2017: C++ \bulk scanners through JNI}
+Create big-data scanners that capture the same artifacts as \bulk:
+\begin{compactitem}
+\item Create \verb+libbe_scan.so+, This library will contain C++ \bulk scanners ported to work with Apache Spark and Cassandra.
+\item Calls to \verb+libbe_scan+ include \verb+scan_email(byte[])+. The actual parameter list may include additional metadata such as filename and file offset.
+\item Calls to \verb+libbe_scan+ will scan bytes and write artifacts in tables in the Cassandra DB, for example email will go to the email table.
+\item In the future, recursive decompression will be supported. This will require tracking additional metadata for managing recursive forensic paths.
+\end{compactitem}
+%\subsection{The \texttt{be\_scan} Library}
+Design:
+\begin{compactitem}
+\item \verb+libbe_scan.so+ will compile on *nix systems using \textit{GNU Autotools}. The design will reflect that of \bulk and \hdb.
+\item The Java JNI bindings will be built using SWIG. A proof-of-concept prototype is available in the \verb+jni_test+ directory. Note that \hdb uses SWIG for its Python bindings.
+\end{compactitem}
 
 \end{document}
 
