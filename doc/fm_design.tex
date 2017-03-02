@@ -32,7 +32,7 @@
 \begin{document}
 
 \begin{center}
-\Large Design considerations for an HBase feature scanner
+\Large Design considerations for an HBase feature scanner\\
 \end{center}
 
 Proposed project name: \fm or \ffm
@@ -384,6 +384,15 @@ Design:
 \item \verb+libbe_scan.so+ will compile on *nix systems using \textit{GNU Autotools}. The design will reflect that of \bulk and \hdb.
 \item The Java JNI bindings will be built using SWIG. A proof-of-concept prototype is available in the \verb+jni_test+ directory. Note that \hdb uses SWIG for its Python bindings.
 \end{compactitem}
+
+\subsection{March 2, 2017: API Option}
+We have a choice of layer for the API:
+\begin{compactitem}
+\item All at once: call one \verb+scan_all()+ function.  The C++ code will open the HDFS file, read the split, and perform all scans.
+\item One per scanner: call \verb+scan_<artifact class>()+ for each artifact type, for example email. Java will read the split and pass the \verb+byte[]+ pointer to each scanner.
+\end{compactitem}
+We will have an API interface for each scanner. These interfaces will accept metadata requisite for handling recursion and forensic paths.
+There will also be an initialization interface for Cassandra setup, \verb+open()+. These interfaces will be static, node-local, and threadsafe per Cassandra thread safety.
 
 \end{document}
 
