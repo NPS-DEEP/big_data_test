@@ -394,5 +394,22 @@ We have a choice of layer for the API:
 We will have an API interface for each scanner. These interfaces will accept metadata requisite for handling recursion and forensic paths.
 There will also be an initialization interface for Cassandra setup, \verb+open()+. These interfaces will be static, node-local, and threadsafe per Cassandra thread safety.
 
+\subsection{Cassandra DB Row}
+\begin{compactitem}
+\item \verb+key = <artifact>+
+\item \verb+value = (<artifact_class>, <filename>, <file_offset>,+\\
+\verb+<recursion_path>)+
+\end{compactitem}
+Here is the CQL statement:\\
+\verb+INSERT INTO <artifact_class> (artifact, filename, file_offset,+\\
+\verb+recursion_path (?,?,?,?);+\\
+For example:\\
+\verb+INSERT INTO email (artifact, filename, file_offset, recursion_path)+\\
+\verb+VALUES (?,?,?,?);+\\
+followed by the tuple of values to bind with it, for example\\
+\verb+(a@b.com, imagefile, 1000, "")+\\
+for email artifact \verb+a@b.com+ in image file \verb+imagefile+ at offset \verb+1000+, and not embedded in a recursive decompressed path.
+
+For further reference, please see the example at \url{https://github.com/datastax/cpp-driver/blob/1.0/examples/basic/basic.c}.
 \end{document}
 
