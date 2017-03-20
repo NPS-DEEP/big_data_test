@@ -30,9 +30,6 @@ targetCompatibility = 1.7
 repositories {
     mavenLocal()
     mavenCentral()
-    maven {
-        url "https://repository.cloudera.com/content/repositories/releases"
-    }
 }
 
 configurations {
@@ -41,8 +38,15 @@ configurations {
 }
 
 dependencies {
+  compile files("../../local/share/be_scan_jni.jar")
+
   //spark
   provided "org.apache.spark:spark-core_2.11:${sparkVersion}"
+
+//  // http://stackoverflow.com/questions/20700053/how-to-add-local-jar-file-dependency-to-build-gradle-file
+//  compile name: '/home/bdallen/local/share/be_scan_jni.jar'
+//  runtime files('/home/bdallen/local/share/be_scan_jni.jar')
+//  compile file tree(dir:'/home/bdallen/zzzlocal/share/be_scan_jni.jar', include: '*.jar')
 }
 
 task run(overwrite: true, type: Exec, dependsOn: [assemble]) {

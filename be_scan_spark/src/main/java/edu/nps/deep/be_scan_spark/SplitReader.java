@@ -5,7 +5,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
-import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.FileSystem;
@@ -18,8 +17,8 @@ import org.apache.hadoop.io.IOUtils;
  */
 public final class SplitReader {
 
-  private final InputSplit inputSplit;
-  private final TaskAttemptContext taskAttemptContext;
+//  private final InputSplit inputSplit;
+//  private final TaskAttemptContext taskAttemptContext;
 
   public final Configuration configuration;
   public final String filename;
@@ -28,7 +27,8 @@ public final class SplitReader {
   public final long splitSize;
   public final byte[] buffer;
 
-  public SplitReader(InputSplit split, TaskAttemptContext context)
+  public SplitReader(InputSplit inputSplit,
+                     TaskAttemptContext taskAttemptContext)
                                throws IOException, InterruptedException {
 
     // configuration
@@ -56,7 +56,7 @@ public final class SplitReader {
     FSDataInputStream in = fileSystem.open(path);
 
     // seek to the split
-    reader.in.seek(splitStart);
+    in.seek(splitStart);
 
     // start should be valid
     if (splitStart > fileSize) {
@@ -64,9 +64,9 @@ public final class SplitReader {
     }
 
     // bufferSize
-    int bufferSize = (fileSize - splitStart > splitSize) ? (int)splitSize : (int)(fileSize - start);
-    buffer = new byte[reader.bufferSize];
-    org.apache.hadoop.io.IOUtils.readFully(reader.in, buffer, 0, bufferSize);
+    int bufferSize = (fileSize - splitStart > splitSize) ? (int)splitSize : (int)(fileSize - splitStart);
+    buffer = new byte[bufferSize];
+    org.apache.hadoop.io.IOUtils.readFully(in, buffer, 0, bufferSize);
     IOUtils.closeStream(in);
   }
 }

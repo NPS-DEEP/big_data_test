@@ -1,11 +1,13 @@
 // based loosely on Spark examples and
 // http://spark.apache.org/docs/latest/programming-guide.html
 
-package edu.nps.deep.be_hbase;
+package edu.nps.deep.be_scan_spark;
 
 import java.io.IOException;
 import java.util.Iterator;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
@@ -21,7 +23,7 @@ import org.apache.spark.api.java.function.Function2;
 import scala.Tuple2;
 
 // See be_scan/java_bindings/Tests.java for example usage of the be_scan API.
-import edu.nps.deep.be_scan;
+import edu.nps.deep.be_scan.BEScan;
 
 /**
  * Scans and imports all artifacts at the first call to nextKeyValue().
@@ -36,16 +38,14 @@ public final class BEScanRecordReader
   }
 
   private boolean isParsed = false;
-  private final SplitReader splitReader;
+  private SplitReader splitReader;
 
   @Override
-  public void initialize(
-                 org.apache.hadoop.mapreduce.InputSplit split,
-                 org.apache.hadoop.mapreduce.TaskAttemptContext context)
-                        throws IOException, InterruptedException {
+  public void initialize(InputSplit split, TaskAttemptContext context)
+                                throws IOException, InterruptedException {
 
     // open the SplitReader
-    splitReader = SplitReader.getReader(split, context);
+    splitReader = new SplitReader(split, context);
   }
 
   @Override
@@ -55,8 +55,8 @@ public final class BEScanRecordReader
     if (!isParsed) {
 
       // open the scanner
-      edu.nps.deep.be_scan.be_scan_t scanner =
-                       new edu.nps.deep.be_scan.be_scan_t("zzzz setting");
+      edu.nps.deep.be_scan.BEScan scanner =
+                       new edu.nps.deep.be_scan.BEScan("zzzz setting");
 
       // scan into the DB
       scanner.scan(splitReader.filename,
@@ -68,6 +68,9 @@ public final class BEScanRecordReader
       // done parsing, the scan is really what we need, not an RDD.
       isParsed = true;
     }
+
+    // never return key value, parsing is what was needed.
+    return false;
   }
 
   @Override
@@ -76,7 +79,7 @@ public final class BEScanRecordReader
   }
 
   @Override
-  public Feature getCurrentValue() throws IOException, InterruptedException {
+  public Long getCurrentValue() throws IOException, InterruptedException {
     return new Long(1);
   }
 

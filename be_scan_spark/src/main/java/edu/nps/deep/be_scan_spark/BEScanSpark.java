@@ -14,10 +14,12 @@ import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.conf.Configuration;
+/*
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Put;  //zz ?
 import org.apache.hadoop.hbase.spark.JavaHBaseContext;
+*/
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaFutureAction;
@@ -37,7 +39,7 @@ public final class BEScanSpark{
   // ************************************************************
   public static class SplitFileInputFormat
         extends org.apache.hadoop.mapreduce.lib.input.FileInputFormat<
-                         Long, Feature> {
+                         Long, Long> {
 
     // createRecordReader returns EmailReader
     @Override
@@ -47,7 +49,7 @@ public final class BEScanSpark{
                  org.apache.hadoop.mapreduce.TaskAttemptContext context)
                        throws IOException, InterruptedException {
 
-      BEScanRecordReader reader = new EmailReader();
+      BEScanRecordReader reader = new BEScanRecordReader();
       reader.initialize(split, context);
       return reader;
     }
@@ -60,7 +62,7 @@ public final class BEScanSpark{
   public static void main(String[] args) {
 
     if (args.length != 1) {
-      System.err.println("Usage: BEHBase <input path>");
+      System.err.println("Usage: BEScanSpark <input path>");
       System.exit(1);
     }
 
@@ -71,7 +73,7 @@ public final class BEScanSpark{
     sparkConfiguration.set("log4j.logger.org.apache.spark.scheduler.DAGScheduler", "TRACE");
     sparkConfiguration.set("yarn.log-aggregation-enable", "true");
     sparkConfiguration.set("fs.hdfs.impl.disable.cache", "true");
-    sparkConfiguration.set("spark.app.id", "Spark BEHBase App");
+    sparkConfiguration.set("spark.app.id", "BEScanSpark App");
 //    sparkConfiguration.set("spark.executor.extrajavaoptions", "-XX:+UseConcMarkSweepGC");
     sparkConfiguration.set("spark.dynamicAllocation.maxExecutors", "400");
 
@@ -89,7 +91,7 @@ public final class BEScanSpark{
 
       // get the hadoop job
       Job hadoopJob = Job.getInstance(sparkContext.hadoopConfiguration(),
-                    "Spark HBase job");
+                    "BEScanSpark job");
 
       // get the file system
       FileSystem fileSystem =
@@ -130,7 +132,7 @@ public final class BEScanSpark{
                Long.class);                          // V
 
       // Engage closure on pairRDD by performing an arbitrary action
-      int count = pairRDD.count();
+      long count = pairRDD.count();
 
       // show the total bytes processed
       System.out.println("total bytes processed: " + totalBytes);
