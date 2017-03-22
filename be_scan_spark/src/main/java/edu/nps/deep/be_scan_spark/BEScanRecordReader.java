@@ -20,6 +20,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
+import org.apache.spark.SparkFiles;
 import scala.Tuple2;
 
 // See be_scan/java_bindings/Tests.java for example usage of the be_scan API.
@@ -34,7 +35,11 @@ public final class BEScanRecordReader
                          Long, Long> {
 
   static {
-    System.load("/home/bdallen/work/local/lib/libbe_scan_jni.so");
+    String rootDirectory = SparkFiles.getRootDirectory();
+    String unused = SparkFiles.get("libbe_scan_jni.so");
+System.out.println("zzzzzzzzzzzzzzzzzzzzzz unused: " + unused);
+    java.io.File path = new java.io.File(rootDirectory, "libbe_scan_jni.so");
+    System.load(path.getAbsolutePath());
   }
 
   private boolean isParsed = false;

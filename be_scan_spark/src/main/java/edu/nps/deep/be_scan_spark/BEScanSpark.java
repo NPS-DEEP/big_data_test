@@ -61,8 +61,8 @@ public final class BEScanSpark{
 
   public static void main(String[] args) {
 
-    if (args.length != 1) {
-      System.err.println("Usage: BEScanSpark <input path>");
+    if (args.length != 2) {
+      System.err.println("Usage: BEScanSpark <libbe_scan.so path> <input path>");
       System.exit(1);
     }
 
@@ -87,6 +87,9 @@ public final class BEScanSpark{
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
     sparkConfiguration.set("be_scan_spark_zzzz", "A value for the be_scan_spark_zzzz variable");
 
+    // make libbe_scan.so available on each node
+    sparkContext.addFile(args[0]);
+
     try {
 
       // get the hadoop job
@@ -98,7 +101,7 @@ public final class BEScanSpark{
                        FileSystem.get(sparkContext.hadoopConfiguration());
 
       // get the input path
-      Path inputPath = new Path(args[0]);
+      Path inputPath = new Path(args[1]);
 
       // iterate over files under the input path
       RemoteIterator<LocatedFileStatus> fileStatusListIterator =
