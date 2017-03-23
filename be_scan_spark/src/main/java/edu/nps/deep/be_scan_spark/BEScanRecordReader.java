@@ -35,11 +35,8 @@ public final class BEScanRecordReader
                          Long, Long> {
 
   static {
-    String rootDirectory = SparkFiles.getRootDirectory();
-    String unused = SparkFiles.get("libbe_scan_jni.so");
-System.out.println("zzzzzzzzzzzzzzzzzzzzzz unused: " + unused);
-    java.io.File path = new java.io.File(rootDirectory, "libbe_scan_jni.so");
-    System.load(path.getAbsolutePath());
+    System.load(SparkFiles.get("libbe_scan.so");
+    System.load(SparkFiles.get("libbe_scan_jni.so");
   }
 
   private boolean isParsed = false;

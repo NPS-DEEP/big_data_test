@@ -14,12 +14,6 @@ import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.conf.Configuration;
-/*
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.Put;  //zz ?
-import org.apache.hadoop.hbase.spark.JavaHBaseContext;
-*/
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaFutureAction;
@@ -62,7 +56,7 @@ public final class BEScanSpark{
   public static void main(String[] args) {
 
     if (args.length != 2) {
-      System.err.println("Usage: BEScanSpark <libbe_scan.so path> <input path>");
+      System.err.println("Usage: BEScanSpark <directory holding .so files> <input path>");
       System.exit(1);
     }
 
@@ -87,8 +81,9 @@ public final class BEScanSpark{
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
     sparkConfiguration.set("be_scan_spark_zzzz", "A value for the be_scan_spark_zzzz variable");
 
-    // make libbe_scan.so available on each node
-    sparkContext.addFile(args[0]);
+    // make .so libraries available on each node
+    sparkContext.addFile(args[0] + "/" + "libbe_scan.so");
+    sparkContext.addFile(args[0] + "/" + "libbe_scan_jni.so");
 
     try {
 
