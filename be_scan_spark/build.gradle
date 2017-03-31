@@ -39,6 +39,7 @@ configurations {
 
 dependencies {
  compile files("../../../local/share/be_scan_jni.jar")
+// compile files("../../local/share/be_scan_jni.jar")
 
   //spark
   provided "org.apache.spark:spark-core_2.11:${sparkVersion}"

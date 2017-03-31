@@ -32,15 +32,17 @@ import edu.nps.deep.be_scan.BEScan;
  */
 public final class BEScanRecordReader
                          extends org.apache.hadoop.mapreduce.RecordReader<
-                         Long, Long> {
+                         Long, String> {
 
   static {
-    System.load(SparkFiles.get("libbe_scan.so");
-    System.load(SparkFiles.get("libbe_scan_jni.so");
+    System.load(SparkFiles.get("libbe_scan.so"));
+    System.load(SparkFiles.get("libbe_scan_jni.so"));
   }
 
   private boolean isParsed = false;
   private SplitReader splitReader;
+  private edu.nps.deep.be_scan.BEScan scanner;
+  private String feature;
 
   @Override
   public void initialize(InputSplit split, TaskAttemptContext context)
@@ -48,31 +50,44 @@ public final class BEScanRecordReader
 
     // open the SplitReader
     splitReader = new SplitReader(split, context);
+
+    // open the scanner
+    scanner = new edu.nps.deep.be_scan.BEScan("email",
+                             splitReader.buffer, splitReader.buffer.length);
+
+    // make sure the buffer was allocated
+    if (!scanner.getIsInitialized()) {
+      throw new IOException("memory allocation for scanner buffer failed");
+    }
   }
 
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
 
-    // maybe parse the split into features
-    if (!isParsed) {
+    edu.nps.deep.be_scan.Artifact artifact = scanner.nextArtifact();
 
-      // open the scanner
-      edu.nps.deep.be_scan.BEScan scanner =
-                       new edu.nps.deep.be_scan.BEScan("zzzz setting");
+    if (artifact.getArtifactClass().equals("")) {
+      // no more artifacts
+      feature = "";
+      return false;
+    } else {
+      StringBuilder sb = new StringBuilder();
 
-      // scan into the DB
-      scanner.scan(splitReader.filename,
-                   splitReader.splitStart,
-                   "",       // recursion path
-                   splitReader.buffer,
-                   splitReader.buffer.length);
-
-      // done parsing, the scan is really what we need, not an RDD.
-      isParsed = true;
+      sb.append(artifact.getArtifactClass());          // artifact class
+      sb.append(" ");                                  // space
+      sb.append(splitReader.filename);                 // filename
+      sb.append(" ");                                  // space
+      sb.append("");                                   // recursion path
+      sb.append(String.valueOf(splitReader.splitStart +
+                     artifact.getBufferOffset()));     // file offset
+      sb.append("\t");                                 // tab
+      sb.append(escape(artifact.getArtifact()));       // artifact
+      sb.append("\t");                                 // tab
+      sb.append(escape(artifact.getContext()));        // context
+      
+      feature = sb.toString();
+      return true;
     }
-
-    // never return key value, parsing is what was needed.
-    return false;
   }
 
   @Override
@@ -81,18 +96,35 @@ public final class BEScanRecordReader
   }
 
   @Override
-  public Long getCurrentValue() throws IOException, InterruptedException {
-    return new Long(1);
+  public String getCurrentValue() throws IOException, InterruptedException {
+    return feature;
   }
 
   @Override
   public float getProgress() throws IOException {
-    return (isParsed) ? 1.0f : 0.0f;
+    return feature.equals("") ? 1.0f : 0.0f;
   }
 
   @Override
   public void close() throws IOException {
     // no action
+  }
+
+  private String escape(String value) {
+    StringBuilder sb = new StringBuilder();
+    for (int i=0; i<value.length(); i++) {
+      int c = (int)value.charAt(i)&0xff;
+      if (c < ' ' || c > 0x7f || c == '\\') {
+        // escape using \xXX
+        sb.append("\\x");
+        sb.append((char)((c/16)+'0'));
+        sb.append((char)((c&0x0f)+'0'));
+      } else {
+        // forward as is
+        sb.append((char)(c));
+      }
+    }
+    return sb.toString();
   }
 }
 

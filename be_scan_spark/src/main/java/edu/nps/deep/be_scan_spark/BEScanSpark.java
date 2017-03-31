@@ -33,11 +33,11 @@ public final class BEScanSpark{
   // ************************************************************
   public static class SplitFileInputFormat
         extends org.apache.hadoop.mapreduce.lib.input.FileInputFormat<
-                         Long, Long> {
+                         Long, String> {
 
     // createRecordReader returns EmailReader
     @Override
-    public org.apache.hadoop.mapreduce.RecordReader<Long, Long>
+    public org.apache.hadoop.mapreduce.RecordReader<Long, String>
            createRecordReader(
                  org.apache.hadoop.mapreduce.InputSplit split,
                  org.apache.hadoop.mapreduce.TaskAttemptContext context)
@@ -73,13 +73,10 @@ public final class BEScanSpark{
 
     sparkConfiguration.set("spark.default.parallelism", "1");
 
-//    sparkConfiguration.set("spark.driver.maxResultSize", "8g"); // default 1g, may use 2.5g
-
-    // set up configuration parameters for be_scan_spark to consume
+    sparkConfiguration.set("spark.driver.maxResultSize", "100g"); // default 1g
 
     // set up the Spark context
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
-    sparkConfiguration.set("be_scan_spark_zzzz", "A value for the be_scan_spark_zzzz variable");
 
     // make .so libraries available on each node
     sparkContext.addFile(args[0] + "/" + "libbe_scan.so");
@@ -123,14 +120,19 @@ public final class BEScanSpark{
       }
 
       // Transformation: create the pairRDD for all the files and splits
-      JavaPairRDD<Long, Long> pairRDD = sparkContext.newAPIHadoopRDD(
+      JavaPairRDD<Long, String> pairRDD = sparkContext.newAPIHadoopRDD(
                hadoopJob.getConfiguration(),         // configuration
                SplitFileInputFormat.class,           // F
                Long.class,                           // K
-               Long.class);                          // V
+               String.class);                        // V
 
-      // Engage closure on pairRDD by performing an arbitrary action
-      long count = pairRDD.count();
+      // Capture all the feature strings
+
+      // create the feature writer
+      FeatureWriterVoidFunction writer = new FeatureWriterVoidFunction();
+
+      // perform the write action
+      pairRDD.foreach(writer);
 
       // show the total bytes processed
       System.out.println("total bytes processed: " + totalBytes);

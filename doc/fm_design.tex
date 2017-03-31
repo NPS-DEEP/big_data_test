@@ -411,5 +411,34 @@ followed by the tuple of values to bind with it, for example\\
 for email artifact \verb+a@b.com+ in image file \verb+imagefile+ at offset \verb+1000+, and not embedded in a recursive decompressed path.
 
 For further reference, please see the example at \url{https://github.com/datastax/cpp-driver/blob/1.0/examples/basic/basic.c}.
-\end{document}
 
+\section{March 24, 2017: C++ \bulk email scanner through JNI}
+With current Spark settings and with using Flex, performance using C++ is about the same as performance using pure Java. Here are some test statistics:
+\begin{compactitem}
+\item 400 files
+\item 400 VCores
+\item 19 TB
+\item 143,822 splits
+\item 1h 29m 47s (5987s)
+\item 3.2 GB/s
+\item Memory is still being consumed but in C, it is not always fully exhausted.
+\end{compactitem}
+
+Conclusion:
+\begin{compactitem}
+\item Performance is poor because the Flex email regular expression parser is highly compute intensive. I recommend improving the algorithm by using a two step process: 1) quickly find a potential email address, then 2) validating the potential address. This can be done with modal Flex expressions or by replacing Flex entirely with discrete logic. I recommend Flex because regular expressions are easier to write and understand.
+\item I recommend that we continue to use C++ and JNI rather than porting to pure Java.  Here are some considerations:
+  \begin{compactitem}
+  \item Using C++ helps bridge access to existing C++ \bulk scanners.
+  \item C++ binds to Python and Java.
+  \item Porting to Java may be difficult, particularly if a scanner uses a library that has a different interface or is not supported in Java.
+  \item Scanner writers may prefer Java.
+  \end{compactitem}
+\end{compactitem}
+
+Additional notes:
+\begin{compactitem}
+\item An analysis of memory depletion indicates that Spark is scheduling many tasks on the same CPU. I suspect that Spark over-schedules CPUs that have HDFS split data locality and leaves other available CPUs idle. I will attempt to tune Spark to schedule one or two tasks per CPU and to schedule tasks on CPUs that are not local to HDFS splits when those CPUs are available, ref. \url{http://blog.cloudera.com/blog/2014/05/apache-spark-resource-management-and-yarn-app-models/}.
+\end{compactitem}
+
+\end{document}
