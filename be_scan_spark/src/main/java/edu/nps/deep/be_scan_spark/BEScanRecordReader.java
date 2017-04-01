@@ -52,7 +52,9 @@ public final class BEScanRecordReader
     splitReader = new SplitReader(split, context);
 
     // open the scanner
-    scanner = new edu.nps.deep.be_scan.BEScan("email", splitReader.buffer);
+    scanner = new edu.nps.deep.be_scan.BEScan("email",
+                             splitReader.buffer, splitReader.buffer.length);
+//    scanner = new edu.nps.deep.be_scan.BEScan("email", splitReader.buffer);
 
     // make sure the buffer was allocated
     if (!scanner.getIsInitialized()) {
