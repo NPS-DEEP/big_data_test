@@ -127,12 +127,8 @@ public final class BEScanSpark{
                String.class);                        // V
 
       // Capture all the feature strings
-
-      // create the feature writer
-      FeatureWriterVoidFunction writer = new FeatureWriterVoidFunction();
-
       // perform the write action
-      pairRDD.foreach(writer);
+      pairRDD.count();
 
       // show the total bytes processed
       System.out.println("total bytes processed: " + totalBytes);

@@ -52,8 +52,7 @@ public final class BEScanRecordReader
     splitReader = new SplitReader(split, context);
 
     // open the scanner
-    scanner = new edu.nps.deep.be_scan.BEScan("email",
-                             splitReader.buffer, splitReader.buffer.length);
+    scanner = new edu.nps.deep.be_scan.BEScan("email", splitReader.buffer);
 
     // make sure the buffer was allocated
     if (!scanner.getIsInitialized()) {
@@ -97,6 +96,10 @@ public final class BEScanRecordReader
 
   @Override
   public String getCurrentValue() throws IOException, InterruptedException {
+
+    // for now, this is the output
+    System.out.println("bulk_extractor " + feature);
+
     return feature;
   }
 

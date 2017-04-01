@@ -53,13 +53,25 @@ public final class SplitReader {
     splitSize = ((FileSplit)inputSplit).getLength();
 
     // open the input file
-    FSDataInputStream in = fileSystem.open(path);
+    FSDataInputStream in;
+    try {
+      in = fileSystem.open(path);
+    } catch (IOException e) {
+      System.out.println("SplitReader read error in fileSystem.open");
+      throw e;
+    }
 
     // seek to the split
-    in.seek(splitStart);
+    try {
+      in.seek(splitStart);
+    } catch (IOException e) {
+      System.out.println("SplitReader read error in in.seek");
+      throw e;
+    }
 
     // start should be valid
     if (splitStart > fileSize) {
+      System.out.println("SplitReader read error in size mismatch");
       throw new IOException("invalid state");
     }
 
