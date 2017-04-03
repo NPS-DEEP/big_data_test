@@ -75,6 +75,8 @@ public final class BEScanSpark{
 
     sparkConfiguration.set("spark.driver.maxResultSize", "100g"); // default 1g
 
+    sparkConfiguration.set("spark.yarn.executor.memoryOverhead", "4000"); // default 1g
+
     // set up the Spark context
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
 

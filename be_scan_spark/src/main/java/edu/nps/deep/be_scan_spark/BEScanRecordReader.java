@@ -72,6 +72,9 @@ public final class BEScanRecordReader
       feature = "";
       return false;
     } else {
+      byte[] javaArtifact = artifact.javaArtifact();
+      byte[] javaContext= artifact.javaContext();
+
       StringBuilder sb = new StringBuilder();
 
       sb.append(artifact.getArtifactClass());          // artifact class
@@ -82,9 +85,9 @@ public final class BEScanRecordReader
       sb.append(String.valueOf(splitReader.splitStart +
                      artifact.getBufferOffset()));     // file offset
       sb.append("\t");                                 // tab
-      sb.append(escape(artifact.getArtifact()));       // artifact
+      sb.append(escape(new String(javaArtifact)));     // artifact
       sb.append("\t");                                 // tab
-      sb.append(escape(artifact.getContext()));        // context
+      sb.append(escape(new String(javaContext)));      // artifact
       
       feature = sb.toString();
       return true;
