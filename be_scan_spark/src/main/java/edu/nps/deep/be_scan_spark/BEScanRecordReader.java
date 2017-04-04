@@ -118,21 +118,19 @@ public final class BEScanRecordReader
     // no action
   }
 
-  private String escape(String value) {
-    StringBuilder sb = new StringBuilder();
-    for (int i=0; i<value.length(); i++) {
-      int c = (int)value.charAt(i)&0xff;
-      if (c < ' ' || c > 0x7f || c == '\\') {
-        // escape using \xXX
-        sb.append("\\x");
-        sb.append((char)((c/16)+'0'));
-        sb.append((char)((c&0x0f)+'0'));
+  private String escape(String input) {
+    StringBuilder output = new StringBuilder();
+    for (int i=0; i<input.length(); ++i) {
+      char ch = input.charAt(i);
+      if (ch < ' ' || ch > '~' || ch == '\\') {
+        // show as \xXX
+        output.append(String.format("\\x%02X", (int)ch));
       } else {
-        // forward as is
-        sb.append((char)(c));
+        // show ascii character
+        output.append(ch);
       }
     }
-    return sb.toString();
+    return output.toString();
   }
 }
 
