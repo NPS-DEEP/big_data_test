@@ -119,18 +119,18 @@ public final class BEScanRecordReader
   }
 
   private String escape(String input) {
-    StringBuilder output = new StringBuilder();
+    StringBuilder sb = new StringBuilder();
     for (int i=0; i<input.length(); ++i) {
-      char ch = input.charAt(i);
-      if (ch < ' ' || ch > '~' || ch == '\\') {
+      char c = input.charAt(i);
+      if (c < ' ' || c > '~' || c == '\\') {
         // show as \xXX
-        output.append(String.format("\\x%02X", (int)ch));
+        sb.append(String.format("\\x%02X", (int)c&0xff));
       } else {
         // show ascii character
-        output.append(ch);
+        sb.append(c);
       }
     }
-    return output.toString();
+    return sb.toString();
   }
 }
 
