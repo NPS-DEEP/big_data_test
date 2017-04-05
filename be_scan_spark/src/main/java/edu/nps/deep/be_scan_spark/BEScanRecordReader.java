@@ -85,9 +85,9 @@ public final class BEScanRecordReader
       sb.append(String.valueOf(splitReader.splitStart +
                      artifact.getBufferOffset()));     // file offset
       sb.append("\t");                                 // tab
-      sb.append(escape(artifact.javaArtifact));        // artifact
+      sb.append(escape(artifact.javaArtifact()));      // artifact
       sb.append("\t");                                 // tab
-      sb.append(escape(artifact.javaContext));         // artifact
+      sb.append(escape(artifact.javaContext()));       // artifact
       
       feature = sb.toString();
       return true;
