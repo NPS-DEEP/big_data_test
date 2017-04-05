@@ -85,9 +85,9 @@ public final class BEScanRecordReader
       sb.append(String.valueOf(splitReader.splitStart +
                      artifact.getBufferOffset()));     // file offset
       sb.append("\t");                                 // tab
-      sb.append(escape(new String(javaArtifact)));     // artifact
+      sb.append(escape(artifact.javaArtifact));        // artifact
       sb.append("\t");                                 // tab
-      sb.append(escape(new String(javaContext)));      // artifact
+      sb.append(escape(artifact.javaContext));         // artifact
       
       feature = sb.toString();
       return true;
@@ -118,10 +118,10 @@ public final class BEScanRecordReader
     // no action
   }
 
-  private String escape(String input) {
+  private static String escape(byte[] bytes) {
     StringBuilder sb = new StringBuilder();
-    for (int i=0; i<input.length(); ++i) {
-      char c = input.charAt(i);
+    for (int i=0; i<bytes.length; ++i) {
+      char c = (char)bytes[i];
       if (c < ' ' || c > '~' || c == '\\') {
         // show as \xXX
         sb.append(String.format("\\x%02X", (int)c&0xff));
