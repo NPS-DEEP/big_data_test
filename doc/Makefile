@@ -1,5 +1,5 @@
 drawings = three_tier_bimap.pdf block_similarity.pdf offset_similarity.pdf \
-           artifact_similarity.pdf
+           artifact_similarity.pdf spark_scan.pdf spark_be_scan.pdf
 
 .SUFFIXES: .svg .pdf
 

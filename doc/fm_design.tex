@@ -28,6 +28,8 @@
 \newcommand{\hb}{\emph{HBase}\xspace}
 \newcommand{\fm}{\emph{Feature Miner}\xspace}
 \newcommand{\ffm}{\emph{Forensic Feature Miner}\xspace}
+\newcommand{\bes}{\emph{be\_scan}\xspace}
+\newcommand{\bess}{\emph{be\_scan\_spark}\xspace}
 
 \begin{document}
 
@@ -440,5 +442,27 @@ Additional notes:
 \begin{compactitem}
 \item An analysis of memory depletion indicates that Spark is scheduling many tasks on the same CPU. I suspect that Spark over-schedules CPUs that have HDFS split data locality and leaves other available CPUs idle. I will attempt to tune Spark to schedule one or two tasks per CPU and to schedule tasks on CPUs that are not local to HDFS splits when those CPUs are available, ref. \url{http://blog.cloudera.com/blog/2014/05/apache-spark-resource-management-and-yarn-app-models/}.
 \end{compactitem}
+
+\section{\bes Integration with Spark (\bess)}
+The basic idea is to distribute many media images across a distributed HDFS file system and scan slices of these images on compute nodes in a distributed cluster while storing found artifacts (email addresses, exif files, etc.) into a distributed database for future analysis, Figure \ref{fig:sparkScan}.
+
+\begin{figure}
+	\center
+	\includegraphics[scale=.45]{spark_scan}
+	\caption{Terabytes of data are scanned into a data store for analysis.}
+	\label{fig:sparkScan}
+\end{figure}
+
+The \bess program uses \bes on a Spark compute node to provide complete scan and decompression integration as shown in Figure \ref{fig:sparkBEScan}.  Spark provides 128MiB slices of data to compute nodes which use the \bes library to scan data into a database.  In addition to scanning, \bess uses the \bes library to decompress data so that it too can be scanned for artifacts.
+
+\begin{figure}
+	\center
+	\includegraphics[scale=.45]{spark_be_scan}
+	\caption{Spark runs compute nodes which scan slices of data for artifacts.}
+	\label{fig:sparkBEScan}
+\end{figure}
+
+
+
 
 \end{document}
