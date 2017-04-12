@@ -8,10 +8,10 @@ def read_totals(logfile):
 
     with open(logfile, 'r') as infile:
         for line in infile:
-            if line[:22] == "flex_bytes_considered ":
-                flex_bytes_considered += int(line[22:])
-            elif line[:20] == "flex_bytes_accepted ":
-                flex_bytes_accepted += int(line[20:])
+            if line[:23] == "flex_bytes_considered: ":
+                flex_bytes_considered += int(line[23:])
+            elif line[:21] == "flex_bytes_accepted: ":
+                flex_bytes_accepted += int(line[21:])
 
     return flex_bytes_considered, flex_bytes_accepted
 
