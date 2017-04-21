@@ -124,7 +124,7 @@ public final class BEScanSpark{
 //        if (totalBytes > 3510000000000L) {
 //          break;
 //        }
-//      }
+      }
 
       // Transformation: create the pairRDD for all the files and splits
       JavaPairRDD<Long, String> pairRDD = sparkContext.newAPIHadoopRDD(
