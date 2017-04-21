@@ -69,7 +69,7 @@ public final class BEScanSpark{
     sparkConfiguration.set("fs.hdfs.impl.disable.cache", "true");
     sparkConfiguration.set("spark.app.id", "BEScanSpark App");
 //    sparkConfiguration.set("spark.executor.extrajavaoptions", "-XX:+UseConcMarkSweepGC");
-    sparkConfiguration.set("spark.dynamicAllocation.maxExecutors", "400");
+    sparkConfiguration.set("spark.dynamicAllocation.maxExecutors", "600");
 
     sparkConfiguration.set("spark.default.parallelism", "1");
 
@@ -107,10 +107,10 @@ public final class BEScanSpark{
         // get file status for this file
         LocatedFileStatus locatedFileStatus = fileStatusListIterator.next();
 
-        // restrict number of files to process else comment this out
-        if (++i > 2) {
-          break;
-        }
+//        // restrict number of files to process else comment this out
+//        if (++i > 2) {
+//          break;
+//        }
 
         // show file being added
         System.out.println("adding " + locatedFileStatus.getLen() +
@@ -119,7 +119,12 @@ public final class BEScanSpark{
         // add this file to the job
         FileInputFormat.addInputPath(hadoopJob, locatedFileStatus.getPath());
         totalBytes += locatedFileStatus.getLen();
-      }
+
+//        // stop after some amount
+//        if (totalBytes > 3510000000000L) {
+//          break;
+//        }
+//      }
 
       // Transformation: create the pairRDD for all the files and splits
       JavaPairRDD<Long, String> pairRDD = sparkContext.newAPIHadoopRDD(
