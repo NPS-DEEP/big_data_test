@@ -57,7 +57,7 @@ public final class BEScanRecordReader
 //    scanner = new edu.nps.deep.be_scan.BEScan("email", splitReader.buffer);
 
     // make sure the buffer was allocated
-    if (!scanner.getIsInitialized()) {
+    if (scanner.getBadAlloc()) {
       throw new IOException("memory allocation for scanner buffer failed");
     }
   }
