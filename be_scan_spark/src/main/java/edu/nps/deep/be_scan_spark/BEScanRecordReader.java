@@ -42,7 +42,7 @@ public final class BEScanRecordReader
   private boolean isParsed = false;
   private SplitReader splitReader;
   private edu.nps.deep.be_scan.BEScan scanner;
-  private String feature;
+  private String feature = "more";
 
   @Override
   public void initialize(InputSplit split, TaskAttemptContext context)
@@ -52,8 +52,9 @@ public final class BEScanRecordReader
     splitReader = new SplitReader(split, context);
 
     // open the scanner
-    scanner = new edu.nps.deep.be_scan.BEScan("email",
-                             splitReader.buffer, splitReader.buffer.length);
+    scanner = new edu.nps.deep.be_scan.BEScan(
+                       edu.nps.deep.be_scan.be_scan_jni.availableScanners(),
+                       splitReader.buffer, splitReader.buffer.length);
 //    scanner = new edu.nps.deep.be_scan.BEScan("email", splitReader.buffer);
 
     // make sure the buffer was allocated
@@ -62,34 +63,82 @@ public final class BEScanRecordReader
     }
   }
 
+  private void show(edu.nps.deep.be_scan.Artifact artifact, String path) {
+    byte[] javaArtifact = artifact.javaArtifact();
+    byte[] javaContext= artifact.javaContext();
+
+    StringBuilder sb = new StringBuilder();
+
+    sb.append(artifact.getArtifactClass());          // artifact class
+    sb.append(" ");                                  // space
+    sb.append(splitReader.filename);                 // filename
+    sb.append(" ");                                  // space
+    sb.append(path);                                 // path
+    sb.append("\t");                                 // tab
+    sb.append(escape(artifact.javaArtifact()));      // artifact
+    sb.append("\t");                                 // tab
+    sb.append(escape(artifact.javaContext()));       // context
+
+    System.out.println("be_scan " + sb.toString());
+  }
+
+  private void recurse(edu.nps.deep.be_scan.Artifact artifactIn,
+                       String pathIn, int depth) {
+    // scan the recursed buffer
+    edu.nps.deep.be_scan.BEScan recurseScanner =
+           new edu.nps.deep.be_scan.BEScan(
+           edu.nps.deep.be_scan.be_scan_jni.availableScanners(), artifactIn);
+    while(true) {
+      edu.nps.deep.be_scan.Artifact artifact = recurseScanner.next();
+      if (artifact.getArtifactClass().equals("")) {
+        break;
+      }
+
+      // compose path
+      StringBuilder sb = new StringBuilder();
+      sb.append(pathIn);
+      sb.append("-");
+      sb.append(artifactIn.getArtifactClass().toUpperCase());
+      sb.append("-");
+      sb.append(String.valueOf(artifact.getBufferOffset()));
+      String path = sb.toString();
+
+      // show this artifact
+      show(artifact, path);
+
+      // manage recursion
+      if (artifact.hasNewBuffer()) {
+        if (depth < 7) {
+          recurse(artifact, path, depth + 1);
+        }
+      }
+
+      // release this bufer
+      artifact.deleteNewBuffer();
+    }
+  }
+
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
 
-    edu.nps.deep.be_scan.Artifact artifact = scanner.nextArtifact();
+    // In future, nextKeyValue should complete all scanning, then return False.
+    edu.nps.deep.be_scan.Artifact artifact = scanner.next();
 
     if (artifact.getArtifactClass().equals("")) {
       // no more artifacts
-      feature = "";
+      feature = "done";
       return false;
     } else {
-      byte[] javaArtifact = artifact.javaArtifact();
-      byte[] javaContext= artifact.javaContext();
+      // consume this artifact
+      String path = String.valueOf(splitReader.splitStart +
+                                   artifact.getBufferOffset());
+      show(artifact, path);
 
-      StringBuilder sb = new StringBuilder();
-
-      sb.append(artifact.getArtifactClass());          // artifact class
-      sb.append(" ");                                  // space
-      sb.append(splitReader.filename);                 // filename
-      sb.append(" ");                                  // space
-      sb.append("");                                   // recursion path
-      sb.append(String.valueOf(splitReader.splitStart +
-                     artifact.getBufferOffset()));     // file offset
-      sb.append("\t");                                 // tab
-      sb.append(escape(artifact.javaArtifact()));      // artifact
-      sb.append("\t");                                 // tab
-      sb.append(escape(artifact.javaContext()));       // artifact
-      
-      feature = sb.toString();
+      // manage recursion
+      if (artifact.hasNewBuffer()) {
+        recurse(artifact, path, 1);
+        artifact.deleteNewBuffer();
+      }
       return true;
     }
   }
@@ -101,16 +150,12 @@ public final class BEScanRecordReader
 
   @Override
   public String getCurrentValue() throws IOException, InterruptedException {
-
-    // for now, this is the output
-    System.out.println("bulk_extractor " + feature);
-
     return feature;
   }
 
   @Override
   public float getProgress() throws IOException {
-    return feature.equals("") ? 1.0f : 0.0f;
+    return feature.equals("done") ? 1.0f : 0.0f;
   }
 
   @Override
