@@ -462,6 +462,43 @@ The \bess program uses \bes on a Spark compute node to provide complete scan and
 	\label{fig:sparkBEScan}
 \end{figure}
 
+\section{May 8, 2017: \hdb with LMDB}
+This section presents an approach for updating the LMDB usage.  A RocksDB implementation will be used instead, presented separately.  This is here for completeness.
+\subsection{\hdb stores}
+hash data store:
+
+Existing: multimap: hash, source ID, set of offsets.  Problem: unreleased swap in page management.
+Proposed: hash, source ID, sub-count. Clip sub-count to 0xffff.  Warn when clipping.
+
+hash store:
+
+Existing: map: hash prefix, set of hash suffix and approximate count.  Problem: unreleased swap, too large of data field if set size gets too large, over 20.
+
+\subsection{\hdb Mac and Win}
+We will drop Mac and Win configurations.  Use-cases are expected to be satisfied with Linux-based configurations.  Technologies such as dropbox may allow usage on Mac and Win if desired.
+
+\subsection{\bes Flex}
+We are likely to replace Flex with lightgrep because:
+\begin{compactitem}
+\item Lightgrep supports dynamic regex compilation.
+\item Lightgrep is declared as preferred in \bulk as faster.
+\item Easier to match \bulk email features.
+\item Simpler than our 2-pass approach, and likely faster.
+\end{compactitem}
+\subsection{\bes recursive decompression}
+Recursive decompression slows processing.  To compensate, we may keep a list of MD5 or 64sum values from compressed data and skip these.
+
+\section{May 8, 2017: \hdb with RocksDB}
+RocksDB targets fast ingest on one node where the overall DB is too large to fit in RAM.  We expect to transition to RocksDB.  Some highlights:
+\begin{compactitem}
+\item Bloom filter.
+\item Prefix-encoded.
+\item 1'st stage RAM pread, not mmap.
+\item Multi-threaded compaction.
+\item Single-node key-value store.
+\item Active development community.
+\end{compactitem}
+
 
 
 
