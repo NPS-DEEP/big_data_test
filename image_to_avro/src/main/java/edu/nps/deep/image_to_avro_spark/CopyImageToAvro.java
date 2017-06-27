@@ -40,12 +40,15 @@ public final class CopyImageToAvro {
   private static final DatumWriter<GenericRecord> datumWriter = new
      GenericDatumWriter<GenericRecord>(imageSchema);
 
-  private static final FileSystem fileSystem =
-                              FileSystem.get(new Configuration());
-  private static final long splitSize = 134217728; // 2^27 = 128 MiB
+  private static final Configuration blankConfiguration = new Configuration();
+
+  private static final int splitSize = 134217728; // 2^27 = 128 MiB
 
   static void rawToAvro(String inFilename, String outFilename)
                         throws IOException, InterruptedException {
+
+    // get file system, which may throw IOException
+    final FileSystem fileSystem = FileSystem.get(blankConfiguration);
 
     // open input
     final Path inPath = new Path(inFilename);
@@ -83,14 +86,16 @@ public final class CopyImageToAvro {
       // write buffer to outFile
       avroSlice.put("offset", offset);
       avroSlice.put("data", buffer);
+      dataFileWriter.append(avroSlice);
 
       // next
       offset += count;
     }
 
     // done copying so close resources
-    in.close();
+    inStream.close();
     dataFileWriter.close();
+    outStream.close();
   }
 }
 
