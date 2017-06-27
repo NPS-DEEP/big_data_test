@@ -10,7 +10,7 @@ project.ext {
 }
 
 jar {
-  baseName = 'be_scan_spark'
+  baseName = 'image_to_avro'
   version =  version
   dependsOn configurations.runtime
   from {
@@ -38,8 +38,6 @@ configurations {
 }
 
 dependencies {
- compile files("../../../local/share/image_to_avro_jni.jar")
-// compile files("../../local/share/image_to_avro_jni.jar")
 
   //spark
   provided "org.apache.spark:spark-core_2.11:${sparkVersion}"
