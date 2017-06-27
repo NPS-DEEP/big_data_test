@@ -49,13 +49,7 @@ public final class CopyImageToAvro {
 
     // open input
     final Path inPath = new Path(inFilename);
-    FSDataInputStream in;
-    try {
-      in = fileSystem.open(inPath);
-    } catch (IOException e) {
-      System.out.println("RawToAvro read error in fileSystem.open");
-      throw e;
-    }
+    FSDataInputStream inStream = fileSystem.open(inPath);
 
     // size of input file
     final long inSize = fileSystem.getContentSummary(inPath).getLength();
@@ -67,29 +61,31 @@ public final class CopyImageToAvro {
                                 DataFileWriter<GenericRecord>(datumWriter);
     dataFileWriter.create(imageSchema, outStream);
 
+    // create a byte buffer
+    int bufferSize = (inSize > splitSize) ? splitSize : (int)inSize;
+    byte[] buffer = new byte[bufferSize];
+
     // create the avro output record
     GenericRecord avroSlice = new GenericData.Record(imageSchema);
 
     // iterate across the image
     long offset = 0;
 
-    while (true) {
+    while (offset != inSize) {
 
-      // create a byte buffer
-      long remaining = inSize - offset;
-      int bufferSize = remaining > inSize ? (int)inSize : (int)remaining;
-      byte[] buffer = new byte[bufferSize];
+      // get count to read
+      int count = (inSize - offset > bufferSize ? bufferSize :
+                                                  (int)(inSize - offset));
 
       // read inFile into buffer
-      if (bufferSize == 0) {
-        // done
-        break;
-      }
-      org.apache.hadoop.io.IOUtils.readFully(in, buffer, offset, bufferSize);
+      inStream.readFully(offset, buffer, 0, count);
 
       // write buffer to outFile
       avroSlice.put("offset", offset);
       avroSlice.put("data", buffer);
+
+      // next
+      offset += count;
     }
 
     // done copying so close resources

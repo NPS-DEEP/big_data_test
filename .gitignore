@@ -1,5 +1,6 @@
 *.jar
 *.swp
+*.swo
 *.class
 *.log
 .gradle
