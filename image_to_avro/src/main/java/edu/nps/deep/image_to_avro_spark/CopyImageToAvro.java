@@ -1,12 +1,19 @@
 
 package edu.nps.deep.image_to_avro;
 
+import java.io.IOException;
+import java.lang.InterruptedException;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericData;
+//zzimport org.apache.avro.generic.GenericData.Record;
 
 /**
  * The Avro media image schema.
@@ -30,20 +37,18 @@ public final class CopyImageToAvro {
   private static final org.apache.avro.Schema imageSchema = new
      org.apache.avro.Schema.Parser().parse(imageSchemaString);
 
-  private static final DatumWriter<GenericRecord> dataumWriter = new
-     GenericDatumWriter<GenericRecord>(GenericRecord.class);
+  private static final DatumWriter<GenericRecord> datumWriter = new
+     GenericDatumWriter<GenericRecord>(imageSchema);
 
   private static final FileSystem fileSystem =
                               FileSystem.get(new Configuration());
   private static final long splitSize = 134217728; // 2^27 = 128 MiB
 
-  private AvroSlice avroSlice = new AvroSlice();
-
-  private static rawToAvro(String inFilename, String outFilename) {
-                               throws IOException, InterruptedException {
+  static void rawToAvro(String inFilename, String outFilename)
+                        throws IOException, InterruptedException {
 
     // open input
-    final Path inPath = Path(inFilename);
+    final Path inPath = new Path(inFilename);
     FSDataInputStream in;
     try {
       in = fileSystem.open(inPath);
@@ -53,14 +58,14 @@ public final class CopyImageToAvro {
     }
 
     // size of input file
-    final inSize = fileSystem.getContentSummary(inPath).getLength();
+    final long inSize = fileSystem.getContentSummary(inPath).getLength();
 
     // open output, false throws exception if file already exists
-    final Path outPath = Path(outFilename);
-    FSDataOutputStream outStream = fileSsytem.create(outPath, false);
+    final Path outPath = new Path(outFilename);
+    FSDataOutputStream outStream = fileSystem.create(outPath, false);
     DataFileWriter<GenericRecord> dataFileWriter = new
                                 DataFileWriter<GenericRecord>(datumWriter);
-    datafileWriter.create(imageSchema, outStream);
+    dataFileWriter.create(imageSchema, outStream);
 
     // create the avro output record
     GenericRecord avroSlice = new GenericData.Record(imageSchema);
@@ -73,7 +78,7 @@ public final class CopyImageToAvro {
       // create a byte buffer
       long remaining = inSize - offset;
       int bufferSize = remaining > inSize ? (int)inSize : (int)remaining;
-      buffer = new byte[bufferSize];
+      byte[] buffer = new byte[bufferSize];
 
       // read inFile into buffer
       if (bufferSize == 0) {

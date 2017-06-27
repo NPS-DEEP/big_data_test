@@ -2,7 +2,9 @@
 package edu.nps.deep.image_to_avro;
 
 import java.io.IOException;
+//import java.io.File;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.Date;
 import java.util.Iterator;
@@ -15,6 +17,7 @@ import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.conf.Configuration;
 
+import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaFutureAction;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -68,6 +71,10 @@ public final class ImageToAvroSpark {
       FileSystem fileSystem =
                        FileSystem.get(sparkContext.hadoopConfiguration());
 
+      // broadcast the output path to the executors
+      final Broadcast<String> broadcastedOutputPath =
+                                     sparkContext.broadcast(args[2]);
+
       // get the input and output paths
       Path inputPath = new Path(args[1]);
       Path outputPath = new Path(args[2]);
@@ -102,25 +109,26 @@ public final class ImageToAvroSpark {
 //        }
       }
 
-      // broadcast the output path to the executors
-      final Broadcast<String> broadcastedOutputPath =
-                                     sparkContext.broadcast(outputPath);
-
       // put the file paths into an RDD
-      JavaRDD<String> inputFilesRDD = sc.parallelize(inputFiles);
+      JavaRDD<String> inputFilesRDD = sparkContext.parallelize(inputFiles);
 
       // conduct foreach action on each element
       inputFilesRDD.foreach(new
                  org.apache.spark.api.java.function.VoidFunction<String>() {
         public void call(String inputFilename) {
 
-          // get output file
-          // name is images_avro prefix plus filenam suffix plus .avro
-          String outputFilename = Path(broadcastedOutputPath.getValue() +
-                                       ".avro")
+          // compose output filename
+          // name is images_avro prefix plus filename suffix plus .avro
+          String outputFilename = (broadcastedOutputPath.getValue() + "/" +
+                                   new java.io.File(inputFilename).getName() +
+                                   ".avro");
 
-
-          imageToAvro(inputFilename, outputFilename);
+          try {
+            CopyImageToAvro.rawToAvro(inputFilename, outputFilename);
+          } catch (IOException|InterruptedException e) {
+            System.out.println("Error in Copy Image to avro '" + inputFilename +
+                               "' to '" + outputFilename + "\n" + e);
+          }
         }
       });
 
