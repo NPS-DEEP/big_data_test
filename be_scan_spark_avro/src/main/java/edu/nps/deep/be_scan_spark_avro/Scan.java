@@ -4,6 +4,7 @@ package edu.nps.deep.be_scan_spark_avro;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.lang.InterruptedException;
+import org.apache.spark.SparkFiles;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.FSDataInputStream;
