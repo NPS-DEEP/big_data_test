@@ -23,6 +23,11 @@ import org.apache.avro.generic.GenericData;
  */
 public final class Scan {
 
+  static {
+    System.load(SparkFiles.get("libbe_scan.so"));
+    System.load(SparkFiles.get("libbe_scan_jni.so"));
+  }
+
   /**
    * The Avro media image schema.
    */
