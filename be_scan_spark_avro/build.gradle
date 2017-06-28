@@ -37,16 +37,18 @@ configurations {
     compile.extendsFrom provided
 }
 
-/*
 dependencies {
+  compile files("../../../local/share/be_scan_jni.jar")
+//  compile files("../../local/share/be_scan_jni.jar")
+
 
   //spark
   provided "org.apache.spark:spark-core_2.11:${sparkVersion}"
 
   // avro
   compile group: 'org.apache.avro', name: 'avro', version: '1.8.1'
+  compile group: 'org.apache.avro', name: 'avro-mapred', version: '1.8.1'
 }
-*/
 
 task run3(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'

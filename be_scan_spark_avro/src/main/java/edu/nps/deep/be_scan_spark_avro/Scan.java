@@ -10,10 +10,10 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.avro.file.SeekableInput;
-import org.apache.avro.mapred.FSInput;
+import org.apache.avro.mapred.FsInput;
 import org.apache.avro.io.DatumReader;
-//import org.apache.avro.generic.GenericDatumWriter;
-//import org.apache.avro.file.DataFileWriter;
+import org.apache.avro.generic.GenericDatumReader;
+import org.apache.avro.file.DataFileReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericData;
 //zzimport org.apache.avro.generic.GenericData.Record;
@@ -61,7 +61,7 @@ public final class Scan {
 //    final long inSize = fileSystem.getContentSummary(inPath).getLength();
 
     // open input
-    SeekableInput seekableInput = new FSInput(inPath, blankConfiguration);
+    SeekableInput seekableInput = new FsInput(inPath, blankConfiguration);
     DataFileReader<GenericRecord> dataFileReader = new
                 DataFileReader<GenericRecord>(seekableInput, datumReader);
 
@@ -69,8 +69,8 @@ public final class Scan {
     GenericRecord avroSlice = null;
     while (dataFileReader.hasNext()) {
       avroSlice = dataFileReader.next(avroSlice);  // support object reuse
-      long offset = avroSlice.get("offset");
-      byte[] buffer = avroSlice.get("data");
+      long offset = (long)avroSlice.get("offset");
+      byte[] buffer = ((ByteBuffer)avroSlice.get("data")).array();
       scanBufferOldWay(inFilename, buffer, offset);
     }
 
@@ -83,7 +83,8 @@ public final class Scan {
   // old way
   // ************************************************************
   private static void scanBufferOldWay(String filename,
-                                       byte[] buffer, long offset) {
+                                       byte[] buffer, long offset)
+                                throws IOException, InterruptedException {
 
     // open the scanner
     edu.nps.deep.be_scan.BEScan scanner = new edu.nps.deep.be_scan.BEScan(
@@ -105,20 +106,18 @@ public final class Scan {
 
       // consume this artifact
       String path = String.valueOf(offset + artifact.getBufferOffset());
-      show(artifact, path);
+      show(artifact, path, filename);
 
       // manage recursion
       if (artifact.hasNewBuffer()) {
-        recurse(artifact, path, 1);
+        recurse(artifact, path, 1, filename);
         artifact.deleteNewBuffer();
       }
-      return true;
     }
-
   }
 
-  private static void show(
-                    edu.nps.deep.be_scan.Artifact artifact, String path) {
+  private static void show(edu.nps.deep.be_scan.Artifact artifact,
+                           String path, String filename) {
     byte[] javaArtifact = artifact.javaArtifact();
     byte[] javaContext= artifact.javaContext();
 
@@ -126,7 +125,7 @@ public final class Scan {
 
     sb.append(artifact.getArtifactClass());          // artifact class
     sb.append(" ");                                  // space
-    sb.append(splitReader.filename);                 // filename
+    sb.append(filename);                             // filename
     sb.append(" ");                                  // space
     sb.append(path);                                 // path
     sb.append("\t");                                 // tab
@@ -138,7 +137,7 @@ public final class Scan {
   }
 
   private static void recurse(edu.nps.deep.be_scan.Artifact artifactIn,
-                       String pathIn, int depth) {
+                       String pathIn, int depth, String filename) {
     // scan the recursed buffer
     edu.nps.deep.be_scan.BEScan recurseScanner =
            new edu.nps.deep.be_scan.BEScan(
@@ -159,12 +158,12 @@ public final class Scan {
       String path = sb.toString();
 
       // show this artifact
-      show(artifact, path);
+      show(artifact, path, filename);
 
       // manage recursion
       if (artifact.hasNewBuffer()) {
         if (depth < 7) {
-          recurse(artifact, path, depth + 1);
+          recurse(artifact, path, depth + 1, filename);
         }
       }
 
