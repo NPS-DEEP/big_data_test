@@ -1,5 +1,4 @@
-// http://spark.apache.org/docs/latest/programming-guide.html
-package edu.nps.deep.image_to_avro;
+package edu.nps.deep.be_scan_spark_avro;
 
 import java.io.IOException;
 //import java.io.File;
