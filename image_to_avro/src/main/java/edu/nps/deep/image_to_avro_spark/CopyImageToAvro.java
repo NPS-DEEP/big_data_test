@@ -2,6 +2,7 @@
 package edu.nps.deep.image_to_avro;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.lang.InterruptedException;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -85,7 +86,9 @@ public final class CopyImageToAvro {
 
       // write buffer to outFile
       avroSlice.put("offset", offset);
-      avroSlice.put("data", buffer);
+//      avroSlice.put("data", buffer);
+      avroSlice.put("data", ByteBuffer.wrap(buffer));
+System.out.println("Append " + count + " of " + inSize + " at offset " + offset + " to " + outFilename);
       dataFileWriter.append(avroSlice);
 
       // next

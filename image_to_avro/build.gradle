@@ -47,23 +47,8 @@ dependencies {
 //  compile group: 'org.apache.avro', name: 'avro-tools', version: '1.8.1'
 }
 
-task run(overwrite: true, type: Exec, dependsOn: [assemble]) {
-  executable = 'spark-submit'
-  args = ["--class","edu.nps.deep.image_to_avro_spark.ImageToAvroSpark", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/big_data_test/image_to_avro_spark/build/libs/image_to_avro_spark-${version}.jar", "/home/bdallen/local/lib", "/user/tjandrze/DEEP/input"]
-}
-
 task run3(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'
-  args = ["--class","edu.nps.deep.image_to_avro_spark.ImageToAvroSpark", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/image_to_avro_spark/build/libs/image_to_avro_spark-${version}.jar", "/home/bdallen/work/local/lib", "/user/tjandrze/DEEP/input"]
+  args = ["--class","edu.nps.deep.image_to_avro.ImageToAvroSpark", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/image_to_avro/build/libs/image_to_avro-${version}.jar", "/user/tjandrze/DEEP/input", "/user/bdallen/images_avro"]
 }
-
-task run4(overwrite: true, type: Exec, dependsOn: [assemble]) {
-  executable = 'spark-submit'
-  args = ["--class","edu.nps.deep.image_to_avro_spark.ImageToAvroSpark", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/image_to_avro_spark/build/libs/image_to_avro_spark-${version}.jar", "/home/bdallen/work/local/lib", "/user/bdallen/email_dir"]
- }
-
-task run5(overwrite: true, type: Exec, dependsOn: [assemble]) {
-  executable = 'spark-submit'
-  args = ["--class","edu.nps.deep.image_to_avro_spark.ImageToAvroSpark", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/image_to_avro_spark/build/libs/image_to_avro_spark-${version}.jar", "/home/bdallen/work/local/lib", "/user/bdallen/images"]
- }
 

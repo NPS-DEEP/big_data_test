@@ -36,7 +36,7 @@ public final class ImageToAvroSpark {
 
   public static void main(String[] args) {
 
-    if (args.length != 3) {
+    if (args.length != 2) {
       System.err.println("Usage: ImageToAvroSpark <input path> <output path>");
       System.exit(1);
     }
@@ -73,11 +73,13 @@ public final class ImageToAvroSpark {
 
       // broadcast the output path to the executors
       final Broadcast<String> broadcastedOutputPath =
-                                     sparkContext.broadcast(args[2]);
+                                     sparkContext.broadcast(args[1]);
 
       // get the input and output paths
-      Path inputPath = new Path(args[1]);
-      Path outputPath = new Path(args[2]);
+      Path inputPath = new Path(args[0]);
+      Path outputPath = new Path(args[1]);
+      System.out.println("Input path: '" + inputPath + "'");
+      System.out.println("output path: '" + outputPath + "'");
 
       // iterate over files under the input path to get inputFiles
       RemoteIterator<LocatedFileStatus> fileStatusListIterator =
