@@ -27,6 +27,12 @@ public final class Scan {
   static {
     System.load(SparkFiles.get("libbe_scan.so"));
     System.load(SparkFiles.get("libbe_scan_jni.so"));
+
+    // new way
+    private static edu.nps.deep.be_scan.ScanEngine scanEngine =
+                             new edu.nps.deep.be_scan.ScanEngine("email");
+    private static edu.nps.deep.be_scan.Scanner scanner =
+        new edu.nps.deep.be_scan.Scanner(scanEngine, "unused output filename");
   }
 
   /**
@@ -77,7 +83,7 @@ public final class Scan {
       avroSlice = dataFileReader.next(avroSlice);  // support object reuse
       long offset = (long)avroSlice.get("offset");
       byte[] buffer = ((ByteBuffer)avroSlice.get("data")).array();
-      scanBufferOldWay(inFilename, buffer, offset);
+      scanBufferNewWay(inFilename, buffer, offset);
     }
 
     // done scanning so close resources
@@ -196,6 +202,15 @@ public final class Scan {
   // ************************************************************
   // new way
   // ************************************************************
-  // TBD
+  private static void scanBufferNewWay(String filename,
+                                       byte[] buffer, long offset)
+                                throws IOException, InterruptedException {
+
+    // scan the buffer
+    String success = scanner.scan(filename, offset, "", buffer, buffer.length);
+    if (success != "") {
+      throw new IOException("Error in scan: " + success);
+    }
+  }
 }
 
