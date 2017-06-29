@@ -12,9 +12,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.file.DataFileWriter;
+import org.apache.avro.file.CodecFactory;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericData;
-//zzimport org.apache.avro.generic.GenericData.Record;
 
 /**
  * The Avro media image schema.
@@ -58,11 +58,12 @@ public final class CopyImageToAvro {
     // size of input file
     final long inSize = fileSystem.getContentSummary(inPath).getLength();
 
-    // open output, false throws exception if file already exists
+    // open output, use false to throw exception if file already exists
     final Path outPath = new Path(outFilename);
     FSDataOutputStream outStream = fileSystem.create(outPath, false);
     DataFileWriter<GenericRecord> dataFileWriter = new
                                 DataFileWriter<GenericRecord>(datumWriter);
+    dataFileWriter.setCodec(CodecFactory.snappyCodec());
     dataFileWriter.create(imageSchema, outStream);
 
     // create a byte buffer
@@ -86,7 +87,6 @@ public final class CopyImageToAvro {
 
       // write buffer to outFile
       avroSlice.put("offset", offset);
-//      avroSlice.put("data", buffer);
       avroSlice.put("data", ByteBuffer.wrap(buffer));
 System.out.println("Append " + count + " of " + inSize + " at offset " + offset + " to " + outFilename);
       dataFileWriter.append(avroSlice);

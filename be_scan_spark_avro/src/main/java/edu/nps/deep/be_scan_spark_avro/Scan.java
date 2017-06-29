@@ -24,15 +24,22 @@ import org.apache.avro.generic.GenericData;
  */
 public final class Scan {
 
+  // new way
+  private static final edu.nps.deep.be_scan.ScanEngine scanEngine;
+  private static final edu.nps.deep.be_scan.Scanner scanner;
+
   static {
+    System.load(SparkFiles.get("libstdc++.so"));
+    System.load(SparkFiles.get("libicudata.so"));
+    System.load(SparkFiles.get("libicuuc.so"));
+    System.load(SparkFiles.get("liblightgrep.so"));
+    System.load(SparkFiles.get("liblightgrep_wrapper.so"));
     System.load(SparkFiles.get("libbe_scan.so"));
     System.load(SparkFiles.get("libbe_scan_jni.so"));
 
     // new way
-    private static edu.nps.deep.be_scan.ScanEngine scanEngine =
-                             new edu.nps.deep.be_scan.ScanEngine("email");
-    private static edu.nps.deep.be_scan.Scanner scanner =
-        new edu.nps.deep.be_scan.Scanner(scanEngine, "unused output filename");
+    scanEngine = new edu.nps.deep.be_scan.ScanEngine("email");
+    scanner = new edu.nps.deep.be_scan.Scanner(scanEngine, "unused output filename");
   }
 
   /**
@@ -83,6 +90,7 @@ public final class Scan {
       avroSlice = dataFileReader.next(avroSlice);  // support object reuse
       long offset = (long)avroSlice.get("offset");
       byte[] buffer = ((ByteBuffer)avroSlice.get("data")).array();
+System.out.println("Scanner.scan offset " + offset + " file " + inFilename);
       scanBufferNewWay(inFilename, buffer, offset);
     }
 
@@ -94,6 +102,7 @@ public final class Scan {
   // ************************************************************
   // old way
   // ************************************************************
+/*
   private static void scanBufferOldWay(String filename,
                                        byte[] buffer, long offset)
                                 throws IOException, InterruptedException {
@@ -198,6 +207,7 @@ public final class Scan {
     }
     return sb.toString();
   }
+*/
 
   // ************************************************************
   // new way
@@ -207,9 +217,10 @@ public final class Scan {
                                 throws IOException, InterruptedException {
 
     // scan the buffer
-    String success = scanner.scan(filename, offset, "", buffer, buffer.length);
-    if (success != "") {
-      throw new IOException("Error in scan: " + success);
+    String success = scanner.scan(filename, java.math.BigInteger.valueOf(offset),
+                                  "", buffer, buffer.length);
+    if (!success.equals("")) {
+      throw new IOException("Error in scan: '" + success + "'");
     }
   }
 }

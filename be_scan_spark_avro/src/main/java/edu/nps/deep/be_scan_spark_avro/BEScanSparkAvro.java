@@ -61,6 +61,12 @@ public final class BEScanSparkAvro {
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
 
     // make .so libraries available on each node
+//    sparkContext.addFile("/usr/lib64/libstdc++.so.6");
+    sparkContext.addFile("/opt/gcc/5.2.0/lib64/libstdc++.so");
+    sparkContext.addFile(args[0] + "/" + "libicudata.so");
+    sparkContext.addFile(args[0] + "/" + "libicuuc.so");
+    sparkContext.addFile(args[0] + "/" + "liblightgrep.so");
+    sparkContext.addFile(args[0] + "/" + "liblightgrep_wrapper.so");
     sparkContext.addFile(args[0] + "/" + "libbe_scan.so");
     sparkContext.addFile(args[0] + "/" + "libbe_scan_jni.so");
 
