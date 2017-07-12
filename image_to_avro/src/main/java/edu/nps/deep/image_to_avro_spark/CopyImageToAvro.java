@@ -98,7 +98,7 @@ System.out.println("Append " + count + " of " + inSize + " at offset " + offset 
 
 //zz diagnostic
 long currentPosition = dataFileWriter.sync();
-System.out.println("sync " + inFilename + " " + currentPosition + "  " + currentPosition - oldCurrentPosition);
+System.out.println("sync " + inFilename + " " + currentPosition + "  " + (currentPosition - oldCurrentPosition));
 oldCurrentPosition = currentPosition;
     }
 
