@@ -1,6 +1,7 @@
-package edu.nps.deep.be_scan_spark;
+package edu.nps.deep.be_scan_spark_avro;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import org.apache.hadoop.mapreduce.InputSplit;
@@ -65,12 +66,11 @@ public final class BufferRecordReader {
 //  private final InputSplit inputSplit;
 //  private final TaskAttemptContext taskAttemptContext;
 
-  public final Configuration configuration;
   public final String filename;
-  public final long fileSize;
+//  public final long fileSize;
   public final long splitStart;
   public final long splitSize;
-  public final byte[] buffer;
+  public final DataFileReader<GenericRecord> reader;
   private GenericRecord genericRecord; // object reuse
 
   public BufferRecordReader(InputSplit inputSplit,
@@ -78,7 +78,7 @@ public final class BufferRecordReader {
                                throws IOException, InterruptedException {
 
     // configuration
-    configuration = taskAttemptContext.getConfiguration();
+    final Configuration configuration = taskAttemptContext.getConfiguration();
 
     // hadoop path
     final Path path = ((FileSplit)inputSplit).getPath();
@@ -89,8 +89,8 @@ public final class BufferRecordReader {
     // filename
     filename = path.toString();
 
-    // fileSize
-    fileSize = fileSystem.getFileStatus(path).getLen();
+//    // fileSize
+//    fileSize = fileSystem.getFileStatus(path).getLen();
 
     // splitStart
     splitStart = ((FileSplit)inputSplit).getStart();
@@ -100,15 +100,14 @@ public final class BufferRecordReader {
 
     // open the Avro file
     FsInput fsInput = new FsInput(path, configuration);
-    DataFileReader<GenericRecord> reader = new DataFileReader(
-                                                   fsInput, datumReader);
+    reader = new DataFileReader(fsInput, datumReader);
 
     // move to first sync in split
     reader.sync(splitStart);
   }
 
   // more if not EOF and not past split
-  public boolean hasNext() {
+  public boolean hasNext() throws IOException {
     if (!reader.hasNext()) {
       return false;
     }
@@ -123,8 +122,9 @@ public final class BufferRecordReader {
 
     // read the Avro record
     genericRecord = reader.next();
-    long offset = (long)avroSlice.get("offset");
-    byte[] buffer = ((ByteBuffer)avroSlice.get("data")).array();
+    long offset = (long)genericRecord.get("offset");
+    byte[] buffer =
+           ((ByteBuffer)genericRecord.get("data")).array();
 
     // return BufferRecord
     return new BufferRecord(offset, buffer);

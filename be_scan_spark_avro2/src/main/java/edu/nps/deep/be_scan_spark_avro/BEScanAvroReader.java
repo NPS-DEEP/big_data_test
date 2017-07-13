@@ -1,12 +1,13 @@
 // based loosely on Spark examples and
 // http://spark.apache.org/docs/latest/programming-guide.html
 
-package edu.nps.deep.be_scan_spark;
+package edu.nps.deep.be_scan_spark_avro;
 
 import java.io.IOException;
 import java.util.Iterator;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -22,9 +23,6 @@ import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.SparkFiles;
 import scala.Tuple2;
-
-// See be_scan/java_bindings/Tests.java for example usage of the be_scan API.
-import edu.nps.deep.be_scan.BEScan;
 
 /**
  * Scans and imports all artifacts at the first call to nextKeyValue().
@@ -51,7 +49,7 @@ public final class BEScanAvroReader
     scanner = new edu.nps.deep.be_scan.Scanner(scanEngine, "unused output filename");
   }
 
-  private final String filename;
+  private String filename;
   private boolean isParsed = false;
   private BufferRecordReader reader;
 
@@ -63,9 +61,8 @@ public final class BEScanAvroReader
     reader = new BufferRecordReader(split, context);
 
     // get the filename string for reporting artifacts
-    filename = ((FileSplit)inputSplit).getPath().toString();
+    filename = ((FileSplit)split).getPath().toString();
   }
-
 
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
@@ -77,7 +74,7 @@ public final class BEScanAvroReader
 
     // parse all records in the split
     while(reader.hasNext()) {
-      BufferRecord record = reader.next();
+      BufferRecordReader.BufferRecord record = reader.next();
 
       // scan the buffer
       String success = scanner.scan(

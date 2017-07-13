@@ -64,7 +64,7 @@ public final class BEScanSparkAvro {
 
     // set up the Spark Configuration
     SparkConf sparkConfiguration = new SparkConf();
-    sparkConfiguration.setAppName("Spark Byte Count App");
+    sparkConfiguration.setAppName("be_scan Avro 2");
     sparkConfiguration.set("log4j.logger.org.apache.spark.rpc.akka.ErrorMonitor", "FATAL");
     sparkConfiguration.set("log4j.logger.org.apache.spark.scheduler.DAGScheduler", "TRACE");
     sparkConfiguration.set("yarn.log-aggregation-enable", "true");
@@ -83,7 +83,6 @@ public final class BEScanSparkAvro {
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
 
     // make .so libraries available on each node
-//    sparkContext.addFile("/usr/lib64/libstdc++.so.6");
     sparkContext.addFile("/opt/gcc/5.2.0/lib64/libstdc++.so");
     sparkContext.addFile(args[0] + "/" + "libicudata.so");
     sparkContext.addFile(args[0] + "/" + "libicuuc.so");
