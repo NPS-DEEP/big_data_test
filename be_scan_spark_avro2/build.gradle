@@ -38,8 +38,8 @@ configurations {
 }
 
 dependencies {
-//  compile files("../../../local/share/be_scan_jni.jar")
-  compile files("../../local/share/be_scan_jni.jar")
+  compile files("../../../local/share/be_scan_jni.jar")
+//  compile files("../../local/share/be_scan_jni.jar")
 
 
   //spark
@@ -52,6 +52,11 @@ dependencies {
 
 task run3(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'
-  args = ["--class","edu.nps.deep.be_scan_spark_avro.BEScanSparkAvro", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_scan_spark_avro/build/libs/be_scan_spark_avro-${version}.jar", "/home/bdallen/work/local/lib", "/user/bdallen/images_avro"]
+  args = ["--class","edu.nps.deep.be_scan_spark_avro.BEScanSparkAvro", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_scan_spark_avro2/build/libs/be_scan_spark_avro-${version}.jar", "/home/bdallen/work/local/lib", "/user/bdallen/images_avro"]
+}
+
+task run4(overwrite: true, type: Exec, dependsOn: [assemble]) {
+  executable = 'spark-submit'
+  args = ["--class","edu.nps.deep.be_scan_spark_avro.BEScanSparkAvro", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_scan_spark_avro2/build/libs/be_scan_spark_avro-${version}.jar", "/home/bdallen/work/local/lib", "/user/bdallen/null"]
 }
 

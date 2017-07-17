@@ -114,10 +114,10 @@ public final class BEScanSparkAvro {
         // get file status for this file
         LocatedFileStatus locatedFileStatus = fileStatusListIterator.next();
 
-        // restrict number of files to process else comment this out
-        if (++i > 2) {
-          break;
-        }
+//        // restrict number of files to process else comment this out
+//        if (++i > 2) {
+//          break;
+//        }
 
         // show this file being added
         System.out.println("adding " + locatedFileStatus.getLen() +

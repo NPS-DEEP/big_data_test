@@ -43,7 +43,6 @@ public final class CopyImageToAvro {
 
   private static final Configuration blankConfiguration = new Configuration();
 
-//zz  private static final int splitSize = 134217728; // 2^27 = 128 MiB
   private static final int bufferSize = 65536;
 
   static void rawToAvro(String inFilename, String outFilename)
@@ -77,7 +76,7 @@ public final class CopyImageToAvro {
     // iterate across the image
     long offset = 0;
 
-    long oldCurrentPosition = 0;
+//    long oldCurrentPosition = 0;
     while (offset != inSize) {
 
       // get count to read
@@ -90,16 +89,16 @@ public final class CopyImageToAvro {
       // write buffer to outFile
       avroSlice.put("offset", offset);
       avroSlice.put("data", ByteBuffer.wrap(buffer, 0, count));
-System.out.println("Append " + count + " of " + inSize + " at offset " + offset + " to " + outFilename);
+//System.out.println("Append " + count + " of " + inSize + " at offset " + offset + " to " + outFilename);
       dataFileWriter.append(avroSlice);
 
       // next
       offset += count;
 
-//zz diagnostic
-long currentPosition = dataFileWriter.sync();
-System.out.println("sync " + inFilename + " " + currentPosition + "  " + (currentPosition - oldCurrentPosition));
-oldCurrentPosition = currentPosition;
+////zz diagnostic
+//long currentPosition = dataFileWriter.sync();
+//System.out.println("sync " + inFilename + " " + currentPosition + "  " + (currentPosition - oldCurrentPosition));
+//oldCurrentPosition = currentPosition;
     }
 
     // done copying so close resources
@@ -108,4 +107,5 @@ oldCurrentPosition = currentPosition;
     outStream.close();
   }
 }
+
 

@@ -13,9 +13,9 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.conf.Configuration;
 
-import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaFutureAction;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -29,6 +29,34 @@ import scala.Tuple2;
 public final class ImageToAvroSpark {
 
   // ************************************************************
+  // RawToAvroFileInputFormat implements createRecordReader which returns
+  // RawToAvroReader which copies raw to avro and returns nothing to RDD.
+  // ************************************************************
+  public static class RawToAvroFileInputFormat
+        extends org.apache.hadoop.mapreduce.lib.input.FileInputFormat<
+                         Long, String> {
+
+    // createRecordReader returns RawToAvroReader
+    @Override
+    public org.apache.hadoop.mapreduce.RecordReader<Long, String>
+           createRecordReader(
+                 org.apache.hadoop.mapreduce.InputSplit split,
+                 org.apache.hadoop.mapreduce.TaskAttemptContext context)
+                       throws IOException, InterruptedException {
+
+      RawToAvroReader reader = new RawToAvroReader();
+      reader.initialize(split, context);
+      return reader;
+    }
+
+    // We process the raw input file all at once rather than in splits.
+    @Override
+    public boolean isSplitable(JobContext context, Path file) {
+      return false;
+    }
+  }
+
+  // ************************************************************
   // Main
   // ************************************************************
 
@@ -38,6 +66,12 @@ public final class ImageToAvroSpark {
       System.err.println("Usage: ImageToAvroSpark <input path> <output path>");
       System.exit(1);
     }
+
+    // get the input and output paths
+    String inputPath = args[0];
+    String outputPath = args[1];
+    System.out.println("Input path: '" + inputPath + "'");
+    System.out.println("output path: '" + outputPath + "'");
 
     // set up the Spark Configuration
     SparkConf sparkConfiguration = new SparkConf();
@@ -56,6 +90,9 @@ public final class ImageToAvroSpark {
 
     sparkConfiguration.set("spark.yarn.executor.memoryOverhead", "4000"); // default 1g
 
+    // put the output path into sparkConfiguration
+    sparkConfiguration.set("raw_to_avro_output_path", args[1]);
+
     // set up the Spark context
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
 
@@ -69,38 +106,27 @@ public final class ImageToAvroSpark {
       FileSystem fileSystem =
                        FileSystem.get(sparkContext.hadoopConfiguration());
 
-      // broadcast the output path to the executors
-      final Broadcast<String> broadcastedOutputPath =
-                                     sparkContext.broadcast(args[1]);
-
-      // get the input and output paths
-      Path inputPath = new Path(args[0]);
-      Path outputPath = new Path(args[1]);
-      System.out.println("Input path: '" + inputPath + "'");
-      System.out.println("output path: '" + outputPath + "'");
-
-      // iterate over files under the input path to get inputFiles
+      // iterate over files under the input path to schedule files
       RemoteIterator<LocatedFileStatus> fileStatusListIterator =
-                                       fileSystem.listFiles(inputPath, true);
+                              fileSystem.listFiles(new Path(inputPath), true);
       int i = 0;
       long totalBytes = 0;
-      ArrayList<String> inputFiles = new ArrayList<>();
       while (fileStatusListIterator.hasNext()) {
 
         // get file status for this file
         LocatedFileStatus locatedFileStatus = fileStatusListIterator.next();
 
-        // restrict number of files to process else comment this out
-        if (++i > 2) {
-          break;
-        }
+//        // restrict number of files to process else comment this out
+//        if (++i > 5) {
+//          break;
+//        }
 
         // show this file being added
         System.out.println("adding " + locatedFileStatus.getLen() +
                   " bytes at path " + locatedFileStatus.getPath().toString());
 
-        // add this file
-        inputFiles.add(locatedFileStatus.getPath().toString());
+        // add this file to the job
+        FileInputFormat.addInputPath(hadoopJob, locatedFileStatus.getPath());
         totalBytes += locatedFileStatus.getLen();
 
 //        // stop after some amount
@@ -109,28 +135,15 @@ public final class ImageToAvroSpark {
 //        }
       }
 
-      // put the file paths into an RDD
-      JavaRDD<String> inputFilesRDD = sparkContext.parallelize(inputFiles);
+      // Transformation: create the pairRDD for all the files and splits
+      JavaPairRDD<Long, String> pairRDD = sparkContext.newAPIHadoopRDD(
+               hadoopJob.getConfiguration(),         // configuration
+               RawToAvroFileInputFormat.class,       // F
+               Long.class,                           // K
+               String.class);                        // V
 
-      // conduct foreach action on each element
-      inputFilesRDD.foreach(new
-                 org.apache.spark.api.java.function.VoidFunction<String>() {
-        public void call(String inputFilename) {
-
-          // compose output filename
-          // name is images_avro prefix plus filename suffix plus .avro
-          String outputFilename = (broadcastedOutputPath.getValue() + "/" +
-                                   new java.io.File(inputFilename).getName() +
-                                   ".avro");
-
-          try {
-            CopyImageToAvro.rawToAvro(inputFilename, outputFilename);
-          } catch (IOException|InterruptedException e) {
-            System.out.println("Error in Copy Image to avro '" + inputFilename +
-                               "' to '" + outputFilename + "\n" + e);
-          }
-        }
-      });
+      // initiate the raw to Avro action
+      pairRDD.count();
 
       // show the total bytes processed
       System.out.println("total bytes processed: " + totalBytes);
