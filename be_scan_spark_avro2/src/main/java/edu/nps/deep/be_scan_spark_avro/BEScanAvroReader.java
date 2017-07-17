@@ -73,18 +73,33 @@ public final class BEScanAvroReader
     }
 
     // parse all records in the split
+long biggestReadTime = 0;
+long biggestReadAndScanTime = 0;
+long biggestReadAndScanTimeOffset = 0;
+
     while(reader.hasNext()) {
+long startTime = System.nanoTime();
       BufferRecordReader.BufferRecord record = reader.next();
+long deltaReadTime = System.nanoTime() - startTime;
 
       // scan the buffer
       String success = scanner.scan(
                           filename,
                           java.math.BigInteger.valueOf(record.offset),
                           "", record.buffer, record.buffer.length);
+long deltaReadAndScanTime = System.nanoTime() - startTime;
+if (deltaReadAndScanTime > biggestReadAndScanTime) {
+  biggestReadTime = deltaReadTime;
+  biggestReadAndScanTime = deltaReadAndScanTime;
+  biggestReadAndScanTimeOffset = record.offset;
+}
       if (!success.equals("")) {
         throw new IOException("Error in scan: '" + success + "'");
       }
     }
+
+// show the section that took the longest
+System.out.println("Read timing: " + biggestReadAndScanTime + " " + biggestReadTime + " " + filename + " " + record.offset);
 
     // done
     return false;
