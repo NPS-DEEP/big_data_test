@@ -33,16 +33,18 @@ public final class BufferReader {
   }
 
   private final int bufferSize = 65536;
+//  private final int bufferSize = 1024;
   private byte[] buffer = new byte[bufferSize];
+  private FSDataInputStream in;
 
   private final String filename;
-//  private final long fileSize;
+  private final long fileSize;
   private final long splitStart; // offset from start of file
   private final long splitSize;
   private int innerSplitOffset; // offset into split
 
-  public BufferRecordReader(InputSplit inputSplit,
-                            TaskAttemptContext taskAttemptContext)
+  public BufferReader(InputSplit inputSplit,
+                      TaskAttemptContext taskAttemptContext)
                                throws IOException, InterruptedException {
 
     // configuration
@@ -67,7 +69,7 @@ public final class BufferReader {
     splitSize = ((FileSplit)inputSplit).getLength();
 
     // open the HDFS binary file
-    FSDataInputStream in = fileSystem.open(path);
+    in = fileSystem.open(path);
 
     // move to split
     in.seek(splitStart);
@@ -97,15 +99,18 @@ public final class BufferReader {
       count = (int)(fileSize - splitStart - innerSplitOffset);
     }
     if (innerSplitOffset + count > splitSize) {
-      count = splitSize - innerSplitOffset;
+      count = (int)(splitSize - innerSplitOffset);
     }
 
     // read the buffer from the split
     org.apache.hadoop.io.IOUtils.readFully(in, buffer, 0, count);
-    innerSplitOffset += count;
 
-    // return BufferRecord
-    return new BufferRecord(splitStart + innerSplitOffset, buffer);
+    // compose BufferRecord
+    BufferRecord bufferRecord = new BufferRecord(
+                                splitStart + innerSplitOffset, buffer);
+
+    innerSplitOffset += count;
+    return bufferRecord;
   }
 }
 

@@ -51,7 +51,7 @@ public final class BEScanSplitReader
 
   private String filename;
   private boolean isParsed = false;
-  private BufferRecordReader reader;
+  private BufferReader reader;
 
   @Override
   public void initialize(InputSplit split, TaskAttemptContext context)
@@ -79,7 +79,7 @@ long biggestReadAndScanTimeOffset = 0;
 
     while(reader.hasNext()) {
 long startTime = System.nanoTime();
-      BufferRecordReader.BufferRecord record = reader.next();
+      BufferReader.BufferRecord record = reader.next();
 long deltaReadTime = System.nanoTime() - startTime;
 
       // scan the buffer
@@ -99,7 +99,7 @@ if (deltaReadAndScanTime > biggestReadAndScanTime) {
     }
 
 // show the section that took the longest
-System.out.println("Read timing: " + biggestReadAndScanTime + " " + biggestReadTime + " " + filename + " " + record.offset);
+System.out.println("Read timing: " + biggestReadAndScanTime + " " + biggestReadTime + " " + filename + " " + biggestReadAndScanTimeOffset);
 
     // done
     return false;

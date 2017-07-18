@@ -10,7 +10,7 @@ project.ext {
 }
 
 jar {
-  baseName = 'be_scan_spark_avro'
+  baseName = 'be_scan_spark2'
   version =  version
   dependsOn configurations.runtime
   from {
@@ -44,19 +44,20 @@ dependencies {
 
   //spark
   provided "org.apache.spark:spark-core_2.11:${sparkVersion}"
-
-  // avro
-  compile group: 'org.apache.avro', name: 'avro', version: '1.8.1'
-  compile group: 'org.apache.avro', name: 'avro-mapred', version: '1.8.1'
 }
 
 task run3(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'
-  args = ["--class","edu.nps.deep.be_scan_spark_avro.BEScanSparkAvro", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_scan_spark_avro2/build/libs/be_scan_spark_avro-${version}.jar", "/home/bdallen/work/local/lib", "/user/bdallen/images_avro"]
+  args = ["--class","edu.nps.deep.be_scan_spark2.BEScanSpark2", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_scan_spark2/build/libs/be_scan_spark2-${version}.jar", "/home/bdallen/work/local/lib", "/user/tjandrze/DEEP/input"]
 }
 
 task run4(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'
-  args = ["--class","edu.nps.deep.be_scan_spark_avro.BEScanSparkAvro", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_scan_spark_avro2/build/libs/be_scan_spark_avro-${version}.jar", "/home/bdallen/work/local/lib", "/user/bdallen/null"]
+  args = ["--class","edu.nps.deep.be_scan_spark2.BEScanSpark2", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_scan_spark2/build/libs/be_scan_spark2-${version}.jar", "/home/bdallen/work/local/lib", "/user/bdallen/images"]
+}
+
+task run5(overwrite: true, type: Exec, dependsOn: [assemble]) {
+  executable = 'spark-submit'
+  args = ["--class","edu.nps.deep.be_scan_spark2.BEScanSpark2", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_scan_spark2/build/libs/be_scan_spark2-${version}.jar", "/home/bdallen/work/local/lib", "/user/bdallen/images_raw_split"]
 }
 
