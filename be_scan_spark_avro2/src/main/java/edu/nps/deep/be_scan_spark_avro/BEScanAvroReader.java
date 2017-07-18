@@ -99,7 +99,7 @@ if (deltaReadAndScanTime > biggestReadAndScanTime) {
     }
 
 // show the section that took the longest
-System.out.println("Read timing: " + biggestReadAndScanTime + " " + biggestReadTime + " " + filename + " " + record.offset);
+System.out.println("Read timing: " + biggestReadAndScanTime + " " + biggestReadTime + " " + filename + " " + biggestReadAndScanTimeOffset);
 
     // done
     return false;
