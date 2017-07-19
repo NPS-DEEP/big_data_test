@@ -1,7 +1,7 @@
 // based loosely on Spark examples and
 // http://spark.apache.org/docs/latest/programming-guide.html
 
-package edu.nps.deep.imageToAvro;
+package edu.nps.deep.image_to_avro;
 
 import java.io.IOException;
 import org.apache.hadoop.mapreduce.InputSplit;
@@ -29,7 +29,7 @@ public final class RawToAvroReader
     inputFilename = ((FileSplit)split).getPath().toString();
 
     // compose the output filename using a hardcoded prefix
-    outputFilename = "null2/" + ((FileSplit)split).getName();
+    outputFilename = "null2/" + ((FileSplit)split).getPath().getName();
   }
 
   @Override
@@ -41,8 +41,9 @@ public final class RawToAvroReader
     }
 
     // copy to Avro
-    CopyImageToAvro.rawToAvro(inputFilename, outputFilename;
+    CopyImageToAvro.rawToAvro(inputFilename, outputFilename);
     isCopied = true;
+    return false;
   }
 
   @Override
