@@ -58,7 +58,7 @@ public final class CopyImageToAvro {
       System.out.println("image_to_avro starting file '" + inFilename + "'");
 
       // get file system, which may throw IOException
-      final FileSystem fileSystem = FileSystem.get(blankConfiguration);
+      final FileSystem fileSystem = FileSystem.get(configuration);
 
       // open input
       final Path inPath = new Path(inFilename);
@@ -74,43 +74,45 @@ public final class CopyImageToAvro {
       if (fileSystem.exists(outPath)) {
         System.out.println("image_to_avro skipping existing file '" +
                                                  inFilename + "'");
+      } else {
 
-      // open output, use false to throw exception if file already exists
-      FSDataOutputStream outStream = fileSystem.create(outPath, false);
-      DataFileWriter<GenericRecord> dataFileWriter = new
+        // open output, use false to throw exception if file already exists
+        FSDataOutputStream outStream = fileSystem.create(outPath, false);
+        DataFileWriter<GenericRecord> dataFileWriter = new
                                 DataFileWriter<GenericRecord>(datumWriter);
-      dataFileWriter.setCodec(CodecFactory.snappyCodec());
-      dataFileWriter.setSyncInterval(65536);
-      dataFileWriter.create(imageSchema, outStream);
+        dataFileWriter.setCodec(CodecFactory.snappyCodec());
+        dataFileWriter.setSyncInterval(65536);
+        dataFileWriter.create(imageSchema, outStream);
 
-      // create a byte buffer
-      byte[] buffer = new byte[bufferSize];
+        // create a byte buffer
+        byte[] buffer = new byte[bufferSize];
 
-      // create the avro output record
-      GenericRecord avroSlice = new GenericData.Record(imageSchema);
+        // create the avro output record
+        GenericRecord avroSlice = new GenericData.Record(imageSchema);
 
-      // iterate across the image
-      long offset = 0;
+        // iterate across the image
+        long offset = 0;
 
-      while (offset != inSize) {
+        while (offset != inSize) {
 
-        // get count to read
-        int count = (inSize - offset > bufferSize ? bufferSize :
+          // get count to read
+          int count = (inSize - offset > bufferSize ? bufferSize :
                                                   (int)(inSize - offset));
 
-        // read inFile into buffer
-        inStream.readFully(offset, buffer, 0, count);
+          // read inFile into buffer
+          inStream.readFully(offset, buffer, 0, count);
 
-        // write buffer to outFile
-        avroSlice.put("offset", offset);
-        avroSlice.put("data", ByteBuffer.wrap(buffer, 0, count));
-        dataFileWriter.append(avroSlice);
+          // write buffer to outFile
+          avroSlice.put("offset", offset);
+          avroSlice.put("data", ByteBuffer.wrap(buffer, 0, count));
+          dataFileWriter.append(avroSlice);
 
-        // next
-        offset += count;
+          // next
+          offset += count;
+        }
+
+        System.out.println("image_to_avro completed file '" + inFilename + "'");
       }
-
-      System.out.println("image_to_avro completed file '" + inFilename + "'");
 
     } finally {
 
