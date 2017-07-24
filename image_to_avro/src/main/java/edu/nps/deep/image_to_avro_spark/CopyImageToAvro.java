@@ -48,10 +48,9 @@ public final class CopyImageToAvro {
                         throws IOException, InterruptedException {
 
     // scope
-    FSDataInputStream inStream;
-    DataFileWriter<GenericRecord> dataFileWriter;
-    FSDataOutputStream outStream;
-
+    FSDataInputStream inStream = null;
+    DataFileWriter<GenericRecord> dataFileWriter = null;
+    FSDataOutputStream outStream = null;
 
     try {
 
@@ -77,9 +76,8 @@ public final class CopyImageToAvro {
       } else {
 
         // open output, use false to throw exception if file already exists
-        FSDataOutputStream outStream = fileSystem.create(outPath, false);
-        DataFileWriter<GenericRecord> dataFileWriter = new
-                                DataFileWriter<GenericRecord>(datumWriter);
+        outStream = fileSystem.create(outPath, false);
+        dataFileWriter = new DataFileWriter<GenericRecord>(datumWriter);
         dataFileWriter.setCodec(CodecFactory.snappyCodec());
         dataFileWriter.setSyncInterval(65536);
         dataFileWriter.create(imageSchema, outStream);
