@@ -41,71 +41,90 @@ public final class CopyImageToAvro {
   private static final DatumWriter<GenericRecord> datumWriter = new
      GenericDatumWriter<GenericRecord>(imageSchema);
 
-  private static final Configuration blankConfiguration = new Configuration();
-
   private static final int bufferSize = 65536;
 
-  static void rawToAvro(String inFilename, String outFilename)
+  static void rawToAvro(Configuration configuration,
+                        String inFilename, String outFilename)
                         throws IOException, InterruptedException {
 
-    // get file system, which may throw IOException
-    final FileSystem fileSystem = FileSystem.get(blankConfiguration);
+    // scope
+    FSDataInputStream inStream;
+    DataFileWriter<GenericRecord> dataFileWriter;
+    FSDataOutputStream outStream;
 
-    // open input
-    final Path inPath = new Path(inFilename);
-    FSDataInputStream inStream = fileSystem.open(inPath);
 
-    // size of input file
-    final long inSize = fileSystem.getContentSummary(inPath).getLength();
+    try {
 
-    // open output, use false to throw exception if file already exists
-    final Path outPath = new Path(outFilename);
-    FSDataOutputStream outStream = fileSystem.create(outPath, false);
-    DataFileWriter<GenericRecord> dataFileWriter = new
+      System.out.println("image_to_avro starting file '" + inFilename + "'");
+
+      // get file system, which may throw IOException
+      final FileSystem fileSystem = FileSystem.get(blankConfiguration);
+
+      // open input
+      final Path inPath = new Path(inFilename);
+      inStream = fileSystem.open(inPath);
+
+      // size of input file
+      final long inSize = fileSystem.getContentSummary(inPath).getLength();
+
+      // output path
+      final Path outPath = new Path(outFilename);
+
+      // warn and skip if output exists
+      if (fileSystem.exists(outPath)) {
+        System.out.println("image_to_avro skipping existing file '" +
+                                                 inFilename + "'");
+
+      // open output, use false to throw exception if file already exists
+      FSDataOutputStream outStream = fileSystem.create(outPath, false);
+      DataFileWriter<GenericRecord> dataFileWriter = new
                                 DataFileWriter<GenericRecord>(datumWriter);
-    dataFileWriter.setCodec(CodecFactory.snappyCodec());
-    dataFileWriter.setSyncInterval(65536);
-    dataFileWriter.create(imageSchema, outStream);
+      dataFileWriter.setCodec(CodecFactory.snappyCodec());
+      dataFileWriter.setSyncInterval(65536);
+      dataFileWriter.create(imageSchema, outStream);
 
-    // create a byte buffer
-    byte[] buffer = new byte[bufferSize];
+      // create a byte buffer
+      byte[] buffer = new byte[bufferSize];
 
-    // create the avro output record
-    GenericRecord avroSlice = new GenericData.Record(imageSchema);
+      // create the avro output record
+      GenericRecord avroSlice = new GenericData.Record(imageSchema);
 
-    // iterate across the image
-    long offset = 0;
+      // iterate across the image
+      long offset = 0;
 
-//    long oldCurrentPosition = 0;
-    while (offset != inSize) {
+      while (offset != inSize) {
 
-      // get count to read
-      int count = (inSize - offset > bufferSize ? bufferSize :
+        // get count to read
+        int count = (inSize - offset > bufferSize ? bufferSize :
                                                   (int)(inSize - offset));
 
-      // read inFile into buffer
-      inStream.readFully(offset, buffer, 0, count);
+        // read inFile into buffer
+        inStream.readFully(offset, buffer, 0, count);
 
-      // write buffer to outFile
-      avroSlice.put("offset", offset);
-      avroSlice.put("data", ByteBuffer.wrap(buffer, 0, count));
-//System.out.println("Append " + count + " of " + inSize + " at offset " + offset + " to " + outFilename);
-      dataFileWriter.append(avroSlice);
+        // write buffer to outFile
+        avroSlice.put("offset", offset);
+        avroSlice.put("data", ByteBuffer.wrap(buffer, 0, count));
+        dataFileWriter.append(avroSlice);
 
-      // next
-      offset += count;
+        // next
+        offset += count;
+      }
 
-////zz diagnostic
-//long currentPosition = dataFileWriter.sync();
-//System.out.println("sync " + inFilename + " " + currentPosition + "  " + (currentPosition - oldCurrentPosition));
-//oldCurrentPosition = currentPosition;
+      System.out.println("image_to_avro completed file '" + inFilename + "'");
+
+    } finally {
+
+      // always close resources
+      if (inStream != null) {
+        inStream.close();
+      }
+      if (dataFileWriter != null) {
+        dataFileWriter.close();
+      }
+      if (outStream != null) {
+        outStream.close();
+      }
     }
-
-    // done copying so close resources
-    inStream.close();
-    dataFileWriter.close();
-    outStream.close();
   }
 }
-
 

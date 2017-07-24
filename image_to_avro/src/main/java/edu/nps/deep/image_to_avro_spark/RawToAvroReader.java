@@ -4,6 +4,7 @@
 package edu.nps.deep.image_to_avro;
 
 import java.io.IOException;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
@@ -17,6 +18,7 @@ public final class RawToAvroReader
                          extends org.apache.hadoop.mapreduce.RecordReader<
                          Long, String> {
 
+  private Configuration configuration;
   private String inputFilename;
   private String outputFilename;
   private boolean isCopied = false;
@@ -25,11 +27,15 @@ public final class RawToAvroReader
   public void initialize(InputSplit split, TaskAttemptContext context)
                                 throws IOException, InterruptedException {
 
+    // get the configuration
+    configuration = context.getConfiguration();
+
     // get the filename string for reporting artifacts
     inputFilename = ((FileSplit)split).getPath().toString();
 
     // compose the output filename using a hardcoded prefix
-    outputFilename = "null2/" + ((FileSplit)split).getPath().getName();
+    String outputPrefix = configuration.get("raw_to_avro_output_path");
+    outputFilename = "outputPrefix/" + ((FileSplit)split).getPath().getName();
   }
 
   @Override
@@ -41,7 +47,7 @@ public final class RawToAvroReader
     }
 
     // copy to Avro
-    CopyImageToAvro.rawToAvro(inputFilename, outputFilename);
+    CopyImageToAvro.rawToAvro(configuration, inputFilename, outputFilename);
     isCopied = true;
     return false;
   }
