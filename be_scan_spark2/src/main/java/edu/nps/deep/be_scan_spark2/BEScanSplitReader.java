@@ -55,7 +55,6 @@ public final class BEScanSplitReader
 
   // consume artifacts, change this to DB as desired
   void consumeArtifacts() {
-    edu.nps.deep.be_scan.Artifact artifact;
     while (!scanner.empty()) {
       edu.nps.deep.be_scan.Artifact artifact = scanner.get();
       // for now, just print it
@@ -95,6 +94,9 @@ public final class BEScanSplitReader
       // scan the buffer
       String success = scanner.scan(record.offset,
                                     previous_buffer, record.buffer);
+      if (!success.equals("")) {
+        throw new IOException("Error: " + success);
+      }
 
       consumeArtifacts();
       if (reader.hasNext()) {
@@ -102,8 +104,11 @@ public final class BEScanSplitReader
         continue;
 
       } else {
-        String success = scanner.scanFinalize(record.offset,
+        success = scanner.scanFinalize(record.offset,
                                               previous_buffer, record.buffer);
+        if (!success.equals("")) {
+          throw new IOException("Error: " + success);
+        }
 
         consumeArtifacts();
         break;
