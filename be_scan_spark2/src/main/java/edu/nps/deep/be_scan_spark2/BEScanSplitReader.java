@@ -46,12 +46,22 @@ public final class BEScanSplitReader
     System.load(SparkFiles.get("libbe_scan_jni.so"));
 
     scanEngine = new edu.nps.deep.be_scan.ScanEngine("email");
-    scanner = new edu.nps.deep.be_scan.Scanner(scanEngine, "unused output filename");
+    scanner = new edu.nps.deep.be_scan.Scanner(scanEngine);
   }
 
   private String filename;
   private boolean isParsed = false;
   private BufferReader reader;
+
+  // consume artifacts, change this to DB as desired
+  void consumeArtifacts() {
+    edu.nps.deep.be_scan.Artifact artifact;
+    while (!scanner.empty()) {
+      edu.nps.deep.be_scan.Artifact artifact = scanner.get();
+      // for now, just print it
+      System.out.println(artifact.toString());
+    }
+  }
 
   @Override
   public void initialize(InputSplit split, TaskAttemptContext context)
@@ -62,10 +72,16 @@ public final class BEScanSplitReader
 
     // get the filename string for reporting artifacts
     filename = ((FileSplit)split).getPath().toString();
+
+    // set up to read this split, no recursion prefix
+    scanner.scanSetup(filename, "");
   }
 
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
+
+    // previous_buffer
+    byte[] previous_buffer = null;
 
     // call exactly once
     if (isParsed) {
@@ -73,35 +89,28 @@ public final class BEScanSplitReader
     }
 
     // parse all records in the split
-long biggestReadTime = 0;
-long biggestReadAndScanTime = 0;
-long biggestReadAndScanTimeOffset = 0;
-
-    while(reader.hasNext()) {
-long startTime = System.nanoTime();
+    while(true) {
       BufferReader.BufferRecord record = reader.next();
-long deltaReadTime = System.nanoTime() - startTime;
 
       // scan the buffer
-      String success = scanner.scan(
-                          filename,
-                          java.math.BigInteger.valueOf(record.offset),
-                          "", record.buffer, record.buffer.length);
-long deltaReadAndScanTime = System.nanoTime() - startTime;
-if (deltaReadAndScanTime > biggestReadAndScanTime) {
-  biggestReadTime = deltaReadTime;
-  biggestReadAndScanTime = deltaReadAndScanTime;
-  biggestReadAndScanTimeOffset = record.offset;
-}
-      if (!success.equals("")) {
-        throw new IOException("Error in scan: '" + success + "'");
+      String success = scanner.scan(record.offset,
+                                    previous_buffer, record.buffer);
+
+      consumeArtifacts();
+      if (reader.hasNext()) {
+        previous_buffer = record.buffer;
+        continue;
+
+      } else {
+        String success = scanner.scanFinalize(record.offset,
+                                              previous_buffer, record.buffer);
+
+        consumeArtifacts();
+        break;
       }
     }
-
-// show the section that took the longest
-System.out.println("Read timing: " + biggestReadAndScanTime + " " + biggestReadTime + " " + filename + " " + biggestReadAndScanTimeOffset);
-
     // done
+    isParsed = true;
     return false;
   }
 

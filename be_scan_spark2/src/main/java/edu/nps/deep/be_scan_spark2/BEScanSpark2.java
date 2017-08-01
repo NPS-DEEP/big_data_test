@@ -83,7 +83,8 @@ public final class BEScanSpark2 {
     JavaSparkContext sparkContext = new JavaSparkContext(sparkConfiguration);
 
     // make .so libraries available on each node
-    sparkContext.addFile("/opt/gcc/5.2.0/lib64/libstdc++.so");
+//    sparkContext.addFile("/opt/gcc/5.2.0/lib64/libstdc++.so");
+    sparkContext.addFile(args[0] + "64/" + "libstdc++.so");
     sparkContext.addFile(args[0] + "/" + "libicudata.so");
     sparkContext.addFile(args[0] + "/" + "libicuuc.so");
     sparkContext.addFile(args[0] + "/" + "liblightgrep.so");
