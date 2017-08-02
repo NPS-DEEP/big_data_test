@@ -89,7 +89,18 @@ public final class BEScanSplitReader
 
     // parse all records in the split
     while(true) {
+
+      // timing
+      long t0 = System.nanoTime();
+      long biggestDelta = 0;
+      long tRead = 0;
+      long tScan = 0;
+      long tConsume = 0;
+
       BufferReader.BufferRecord record = reader.next();
+
+      // timing
+      long t1 = System.nanoTime();
 
       // scan the buffer
       String success = scanner.scan(record.offset,
@@ -98,7 +109,19 @@ public final class BEScanSplitReader
         throw new IOException("Error: " + success);
       }
 
+      // timing
+      long t2 = System.nanoTime();
+
       consumeArtifacts();
+
+      // timing
+      long t3 = System.nanoTime();
+      if (t3 - t0 > biggstDelta) {
+        tRead = t1 - t0;
+        tScan = t2 - t1;
+        tConsume = t3 - t2;
+      }
+
       if (reader.hasNext()) {
         previous_buffer = record.buffer;
         continue;
@@ -116,6 +139,9 @@ public final class BEScanSplitReader
     }
     // done
     isParsed = true;
+
+    // timing
+    System.out.println("Read timing total: " + biggestDelta + " read: " + tRead + " scan: " + tScan + " consume: " + tConsume + " " + filename + " " + record.offset);
     return false;
   }
 
