@@ -87,15 +87,16 @@ public final class BEScanSplitReader
       throw new IOException("Error: BESanAvroReader next already called");
     }
 
+    // timing
+    long biggestDelta = 0;
+    long tRead = 0;
+    long tScan = 0;
+    long tConsume = 0;
+
     // parse all records in the split
     while(true) {
-
       // timing
       long t0 = System.nanoTime();
-      long biggestDelta = 0;
-      long tRead = 0;
-      long tScan = 0;
-      long tConsume = 0;
 
       BufferReader.BufferRecord record = reader.next();
 
@@ -116,10 +117,11 @@ public final class BEScanSplitReader
 
       // timing
       long t3 = System.nanoTime();
-      if (t3 - t0 > biggstDelta) {
+      if (t3 - t0 > biggestDelta) {
         tRead = t1 - t0;
         tScan = t2 - t1;
         tConsume = t3 - t2;
+        biggestDelta = t3 - t0;
       }
 
       if (reader.hasNext()) {
