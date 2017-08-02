@@ -89,6 +89,7 @@ public final class BEScanSplitReader
 
     // timing
     long biggestDelta = 0;
+    long tRecordOffset = 0;
     long tRead = 0;
     long tScan = 0;
     long tConsume = 0;
@@ -118,6 +119,7 @@ public final class BEScanSplitReader
       // timing
       long t3 = System.nanoTime();
       if (t3 - t0 > biggestDelta) {
+        tRecordOffset = record.offset;
         tRead = t1 - t0;
         tScan = t2 - t1;
         tConsume = t3 - t2;
@@ -143,7 +145,7 @@ public final class BEScanSplitReader
     isParsed = true;
 
     // timing
-    System.out.println("Read timing total: " + biggestDelta + " read: " + tRead + " scan: " + tScan + " consume: " + tConsume + " " + filename + " " + record.offset);
+    System.out.println("Read timing total: " + biggestDelta + " read: " + tRead + " scan: " + tScan + " consume: " + tConsume + " " + filename + " " + tRecordOffset);
     return false;
   }
 
