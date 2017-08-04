@@ -7,6 +7,11 @@ version = '0.0.0'
 
 project.ext {
   sparkVersion = '2.0.1'
+//  hbaseVersion = '1.2.4'
+//  hbaseVersion = '2.0.0-alpha-1'
+  hbaseVersion = '1.3.1'
+//  hadoopVersion = '2.6.0-mr1-cdh5.12.0'
+//  hadoopVersion = '1.2.1'
 }
 
 jar {
@@ -41,9 +46,19 @@ dependencies {
   compile files("../../../local/share/be_scan_jni.jar")
 //  compile files("../../local/share/be_scan_jni.jar")
 
-
   //spark
   provided "org.apache.spark:spark-core_2.11:${sparkVersion}"
+
+  //hbase
+  provided "org.apache.hbase:hbase:${hbaseVersion}"
+  provided "org.apache.hbase:hbase-common:${hbaseVersion}"
+  provided "org.apache.hbase:hbase-client:${hbaseVersion}"
+  provided "org.apache.hbase:hbase-server:${hbaseVersion}"
+//  provided "org.apache.hbase:hbase-spark:${hbaseVersion}"
+//  provided "org.apache.hbase:hbase-spark:1.2.0-cdh5.9.1"
+//  provided "org.apache.hadoop:hadoop-core:${hadoopVersion}"
+//  provided "org.apache.hadoop:hadoop-common:${hadoopVersion}"
+//  provided "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
 }
 
 task run3(overwrite: true, type: Exec, dependsOn: [assemble]) {

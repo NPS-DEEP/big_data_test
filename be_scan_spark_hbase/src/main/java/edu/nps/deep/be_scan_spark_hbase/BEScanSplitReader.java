@@ -24,16 +24,17 @@ import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.SparkFiles;
 import scala.Tuple2;
 
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.util.Bytes;
+
 import edu.nps.deep.be_scan.Artifact;
 
 /**
- * Scans and imports all artifacts at the first call to nextKeyValue().
- * Nothing meaningful is returned for the RDD, and returned constants
- * should be changed to null.
+ * Scans and provides artifacts.
  */
 public final class BEScanSplitReader
                          extends org.apache.hadoop.mapreduce.RecordReader<
-                         Long, String> {
+                         Long, Put> {
 
   // static scan engine and scanner
   private static final edu.nps.deep.be_scan.ScanEngine scanEngine;
@@ -54,7 +55,6 @@ public final class BEScanSplitReader
   private String filename;
   private BufferReader reader;
   byte[] previous_buffer = null;
-  private Queue<Artifact> artifacts = new Queue<Artifact>();
   private Artifact artifact = null;
 
 /*
@@ -105,7 +105,7 @@ public final class BEScanSplitReader
   private void scanAsNeeded() throws IOException {
 
     // scan buffers until we get artifacts
-    while (reader.hasNext() && artifacts.isEmpty()) {
+    while (reader.hasNext() && scanner.empty()) {
 
       // read next
       BufferReader.BufferRecord record = reader.next();
@@ -127,12 +127,13 @@ public final class BEScanSplitReader
 
     // maybe scan more
     scanAsNeeded();
-    artifact = artifacts.poll(); // will be null if empty
-    if (artifact == null) {
-      // done
+    if (scanner.empty()) {
+      // no more artifacts
+      artifact = null;
       return false;
     } else {
-      // more
+      // stage next artifact
+      artifact = scanner.get();
       return true;
     }
   }
@@ -148,7 +149,8 @@ public final class BEScanSplitReader
     Put put = new Put(Bytes.toBytes("email," + filename + "," + 
                                     artifact.getArtifact()));
     put.addColumn(Bytes.toBytes("f"),        // column family
-                  Bytes.toBytes(artifact.getFeature()));
+                  Bytes.toBytes("offset"),
+                  Bytes.toBytes(String.valueOf(artifact.getOffset())));
     return put;
   }
 

@@ -14,7 +14,10 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.conf.Configuration;
+
+import org.apache.hadoop.hbase.mapreduce.TableOutputFormat;
 
 import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.SparkConf;
@@ -27,9 +30,9 @@ import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.VoidFunction;
 import scala.Tuple2;
 
-import org.apache.hadoop.hbase.client.Put
+import org.apache.hadoop.hbase.client.Put;
 
-public final class BEScanSpark2 {
+public final class BEScanSparkHBase {
 
   // ************************************************************
   // BEScanRawFileInputFormat implements createRecordReader which returns
@@ -37,11 +40,11 @@ public final class BEScanSpark2 {
   // ************************************************************
   public static class BEScanRawFileInputFormat
         extends org.apache.hadoop.mapreduce.lib.input.FileInputFormat<
-                         Long, String> {
+                         Long, Put> {
 
     // createRecordReader returns EmailReader
     @Override
-    public org.apache.hadoop.mapreduce.RecordReader<Long, String>
+    public org.apache.hadoop.mapreduce.RecordReader<Long, Put>
            createRecordReader(
                  org.apache.hadoop.mapreduce.InputSplit split,
                  org.apache.hadoop.mapreduce.TaskAttemptContext context)
@@ -98,7 +101,7 @@ public final class BEScanSpark2 {
 
       // get the hadoop job
       Job hadoopJob = Job.getInstance(sparkContext.hadoopConfiguration(),
-                    "BEScanSpark2 job");
+                    "BEScanSparkHBase job");
 
       // get the hadoop job configuration object
       Configuration configuration = hadoopJob.getConfiguration();
@@ -141,6 +144,9 @@ public final class BEScanSpark2 {
 //          break;
 //        }
       }
+
+      // file output path
+      FileOutputFormat.setOutputPath(hadoopJob, new Path("my_hbase_output_path"));
 
       // Transformation: create the pairRDD for all the files and splits
       JavaPairRDD<Long, Put> pairRDD = sparkContext.newAPIHadoopRDD(
