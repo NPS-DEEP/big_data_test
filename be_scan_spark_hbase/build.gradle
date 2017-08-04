@@ -48,11 +48,11 @@ dependencies {
 
 task run3(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'
-  args = ["--class","edu.nps.deep.be_scan_spark2.BEScanSpark2", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_scan_spark2/build/libs/be_scan_spark2-${version}.jar", "/home/bdallen/work/local/lib", "/user/tjandrze/DEEP/input"]
+  args = ["--class","edu.nps.deep.be_scan_spark_hbase.BEScanSparkHBase", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_scan_spark_hbase/build/libs/be_scan_spark_hbase-${version}.jar", "/home/bdallen/work/local/lib", "/user/tjandrze/DEEP/input"]
 }
 
 task run4(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'
-  args = ["--class","edu.nps.deep.be_scan_spark2.BEScanSpark2", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_scan_spark2/build/libs/be_scan_spark2-${version}.jar", "/home/bdallen/work/local/lib", "/user/bdallen/images"]
+  args = ["--class","edu.nps.deep.be_scan_spark_hbase.BEScanSparkHBase", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_scan_spark_hbase/build/libs/be_scan_spark_hbase-${version}.jar", "/home/bdallen/work/local/lib", "/user/bdallen/images"]
 }
 

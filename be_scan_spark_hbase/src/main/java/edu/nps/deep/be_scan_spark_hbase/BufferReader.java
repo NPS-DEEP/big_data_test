@@ -1,4 +1,4 @@
-package edu.nps.deep.be_scan_spark2;
+package edu.nps.deep.be_scan_spark_hbase;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
