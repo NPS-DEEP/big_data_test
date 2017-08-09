@@ -46,7 +46,7 @@ public final class BEScanSparkAvro {
                        throws IOException, InterruptedException {
 
       BEScanAvroReader reader = new BEScanAvroReader();
-      reader.initialize(split, context);
+//zz      reader.initialize(split, context);
       return reader;
     }
   }
@@ -115,9 +115,16 @@ public final class BEScanSparkAvro {
         LocatedFileStatus locatedFileStatus = fileStatusListIterator.next();
 
 //        // restrict number of files to process else comment this out
-//        if (++i > 2) {
+//        if (++i > 20) {
 //          break;
 //        }
+
+//        // only process selected file
+//        if (locatedFileStatus.getPath().toString().indexOf(
+//              "GH1-1081.E01_1469998471.raw.avro") == -1) {
+//          continue;
+//        }
+//              "AE10-1160.E01_1470081408.raw.avro") == -1) 
 
         // show this file being added
         System.out.println("adding " + locatedFileStatus.getLen() +

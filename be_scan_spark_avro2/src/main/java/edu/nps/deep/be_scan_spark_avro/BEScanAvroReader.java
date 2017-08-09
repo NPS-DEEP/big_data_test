@@ -49,22 +49,41 @@ public final class BEScanAvroReader
     scanner = new edu.nps.deep.be_scan.Scanner(scanEngine, "unused output filename");
   }
 
-  private String filename;
+  private String filename = "not defined yet";
   private boolean isParsed = false;
   private BufferRecordReader reader;
+private boolean badInitialization = false;
 
   @Override
-  public void initialize(InputSplit split, TaskAttemptContext context)
-                                throws IOException, InterruptedException {
+  public void initialize(InputSplit split, TaskAttemptContext context) {
+//                                throws IOException, InterruptedException {
 
-    // open the reader
-    reader = new BufferRecordReader(split, context);
+long start = -1;
+try {
 
     // get the filename string for reporting artifacts
     filename = ((FileSplit)split).getPath().toString();
+
+    // open the reader
+    reader = new BufferRecordReader(split, context);
+start = ((FileSplit)split).getStart();
+//System.out.println("BEScanAvroReader.initialize zzzzzzzzzz '" + filename + "' start " + start);
+//} catch (IOException e) {
+} catch (Exception e) {
+  System.out.println("BEScanAvroReader.initialize zzzzzzzzzz Exception failure in '" + filename + "' at " + start + ": " + e);
+  badInitialization = true;
+//} catch (IOException e) {
+//  System.out.println("BEScanAvroReader.initialize IOException failure in '" + filename + "' at " + start);
+//  badInitialization = true;
+//} catch (java.io.EOFException e) {
+//  System.out.println("BEScanAvroReader.initialize EOFException failure in '" + filename + "' at " + start);
+////System.out.println("BEScanAvroReader.initialize failure in '" + filename + "' at " + ((FileSplit)split).getStart());
+//  badInitialization = true;
+}
   }
 
   @Override
+//  public boolean nextKeyValue() {
   public boolean nextKeyValue() throws IOException, InterruptedException {
 
     // call exactly once
@@ -72,34 +91,34 @@ public final class BEScanAvroReader
       throw new IOException("Error: BESanAvroReader next already called");
     }
 
+    if (badInitialization) {
+      System.out.println("BEScanAvroReader.nextKeyValue skip because of bad initialization in '" + filename + "'");
+      return false;
+    }
+
+
     // parse all records in the split
-long biggestReadTime = 0;
-long biggestReadAndScanTime = 0;
-long biggestReadAndScanTimeOffset = 0;
-
+      try {
     while(reader.hasNext()) {
-long startTime = System.nanoTime();
-      BufferRecordReader.BufferRecord record = reader.next();
-long deltaReadTime = System.nanoTime() - startTime;
+        BufferRecordReader.BufferRecord record = reader.next();
 
-      // scan the buffer
-      String success = scanner.scan(
+        // scan the buffer
+/*
+        String success = scanner.scan(
                           filename,
                           java.math.BigInteger.valueOf(record.offset),
                           "", record.buffer, record.buffer.length);
-long deltaReadAndScanTime = System.nanoTime() - startTime;
-if (deltaReadAndScanTime > biggestReadAndScanTime) {
-  biggestReadTime = deltaReadTime;
-  biggestReadAndScanTime = deltaReadAndScanTime;
-  biggestReadAndScanTimeOffset = record.offset;
-}
-      if (!success.equals("")) {
-        throw new IOException("Error in scan: '" + success + "'");
-      }
-    }
 
-// show the section that took the longest
-System.out.println("Read timing: " + biggestReadAndScanTime + " " + biggestReadTime + " " + filename + " " + biggestReadAndScanTimeOffset);
+        if (!success.equals("")) {
+          throw new IOException("Error in scan: '" + success + "'");
+        }
+*/
+      //} catch (org.apache.avro.AvroRuntimeException, IOException e) {
+    }
+      } catch (Exception e) {
+        System.out.println("BEScanAvroReader.nextKeyValue abort in '" + filename + "'");
+//        break;
+      }
 
     // done
     return false;

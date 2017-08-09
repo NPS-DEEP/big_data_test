@@ -146,11 +146,21 @@ public final class BEScanSplitReader
   @Override
   public Put getCurrentValue() throws IOException, InterruptedException {
     // build key, value put object for HBase entry
-    Put put = new Put(Bytes.toBytes("email," + filename + "," + 
-                                    artifact.getArtifact()));
+//    Put put = new Put(Bytes.toBytes("email," + filename + "," + 
+//                                    artifact.getArtifact()));
+    Put put = new Put(Bytes.toBytes("email," + filename));
+
+//    put.addColumn(Bytes.toBytes("f"),        // column family
+//                  Bytes.toBytes("offset"),
+//                  Bytes.toBytes(String.valueOf(artifact.getOffset())));
+//
+//    put.addColumn(Bytes.toBytes("f"),        // column family
+//                  Bytes.toBytes(String.valueOf(artifact.getOffset())), // offset
+//                  Bytes.toBytes(""));        // column value
+
     put.addColumn(Bytes.toBytes("f"),        // column family
-                  Bytes.toBytes("offset"),
-                  Bytes.toBytes(String.valueOf(artifact.getOffset())));
+                  Bytes.toBytes(String.valueOf(artifact.getOffset())), // offset
+                  Bytes.toBytes(artifact.getArtifact()));        // column value
     return put;
   }
 
