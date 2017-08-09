@@ -1,0 +1,1 @@
+Scan splits using lightgrep, write found artifacts to Spark-SQL
