@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.nps.deep.example_hbase_put
+package edu.nps.deep.example_hbase_put;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +49,7 @@ final public class JavaHBaseBulkPutExample {
     String columnFamily = args[1];
 
     SparkConf sparkConf = new SparkConf().setAppName("JavaHBaseBulkPutExample " + tableName);
+    sparkConf.set("hbase.thrift.connection.max-idletime", "1800000");
     JavaSparkContext jsc = new JavaSparkContext(sparkConf);
 
     try {

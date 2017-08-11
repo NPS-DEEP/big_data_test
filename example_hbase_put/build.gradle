@@ -7,6 +7,7 @@ version = '0.0.0'
 
 project.ext {
   sparkVersion = '2.0.1'
+  hbaseVersion = '1.2.1'
 }
 
 jar {
@@ -30,6 +31,11 @@ targetCompatibility = 1.7
 repositories {
     mavenLocal()
     mavenCentral()
+
+    // for hbase-spark
+    maven {
+        url "https://repository.cloudera.com/content/repositories/releases"
+    }
 }
 
 configurations {
@@ -42,12 +48,20 @@ dependencies {
 //  compile files("../../local/share/be_scan_jni.jar")
 
 
-  //spark
+  // spark
   provided "org.apache.spark:spark-core_2.11:${sparkVersion}"
+
+  // hbase
+  provided "org.apache.hbase:hbase:${hbaseVersion}"
+  provided "org.apache.hbase:hbase-common:${hbaseVersion}"
+  provided "org.apache.hbase:hbase-client:${hbaseVersion}"
+  provided "org.apache.hbase:hbase-server:${hbaseVersion}"
+
+  provided "org.apache.hbase:hbase-spark:1.2.0-cdh5.9.1"
 }
 
 task run3(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'
-  args = ["--class","edu.nps.deep.example_hbase_put.JavaHBaseBulkPutExample", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/example_hbase_put/build/libs/example_hbase_put-${version}.jar", "example_hbase_table", "column_family"]
+  args = ["--class","edu.nps.deep.example_hbase_put.JavaHBaseBulkPutExample", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/example_hbase_put/build/libs/java_hbase_bulk_put_example-${version}.jar", "example_hbase_table", "column_family"]
 }
 

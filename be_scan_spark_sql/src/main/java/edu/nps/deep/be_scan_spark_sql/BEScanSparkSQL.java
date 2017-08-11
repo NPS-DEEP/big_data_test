@@ -28,6 +28,11 @@ import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.VoidFunction;
 import scala.Tuple2;
 
+//import org.apache.spark.sql.hive.api.java.JavaSQLContext;
+import org.apache.spark.sql.hive.HiveContext;
+//import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.Dataset;
+
 public final class BEScanSparkSQL {
 
   // ************************************************************
@@ -36,11 +41,11 @@ public final class BEScanSparkSQL {
   // ************************************************************
   public static class BEScanRawFileInputFormat
         extends org.apache.hadoop.mapreduce.lib.input.FileInputFormat<
-                         Long, Put> {
+                         Long, SerializableArtifact> {
 
     // createRecordReader returns EmailReader
     @Override
-    public org.apache.hadoop.mapreduce.RecordReader<Long, Put>
+    public org.apache.hadoop.mapreduce.RecordReader<Long, SerializableArtifact>
            createRecordReader(
                  org.apache.hadoop.mapreduce.InputSplit split,
                  org.apache.hadoop.mapreduce.TaskAttemptContext context)
@@ -123,7 +128,7 @@ public final class BEScanSparkSQL {
         LocatedFileStatus locatedFileStatus = fileStatusListIterator.next();
 
         // restrict number of files to process else comment this out
-        if (++i > 2) {
+        if (++i > 1) {
           break;
         }
 
@@ -149,13 +154,18 @@ public final class BEScanSparkSQL {
                Long.class,                           // K
                SerializableArtifact.class);          // V
 
-      // convert javaPairRDD to DataFrame
-      DataFrame dataFrame = hiveContext.createDataFrame(
-                            pairRDD.values(), SerializableArtifact.class);
+JavaRDD javaRDD = pairRDD.values();
+
+      // convert javaPairRDD to Dataset
+      Dataset dataFrame = hiveContext.createDataFrame(
+                            javaRDD, SerializableArtifact.class);
 
       // save SQL dataframe to file
-      dataFrame.write().save("my_sql_artifacts_file");
-      dataFrame.write().saveAsTable("my_sql_artifacts_table");
+System.out.println("BEScanSparkSQL checkpoint.a");
+//      dataFrame.write().save("my_sql_artifacts_file2");
+System.out.println("BEScanSparkSQL checkpoint.b");
+      dataFrame.write().saveAsTable("my_sql_artifacts_table5");
+System.out.println("BEScanSparkSQL checkpoint.c");
 
       // show the total bytes processed
       System.out.println("total bytes processed: " + totalBytes);

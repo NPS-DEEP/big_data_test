@@ -6,13 +6,14 @@ group = 'NPS_DEEP'
 version = '0.0.0'
 
 project.ext {
-  sparkVersion = '2.0.1'
-  hiveVersion = '1.3.0' // SQL with Hive
+  sparkVersion = '2.0.2'
+  // https://mvnrepository.com/artifact/org.apache.spark/spark-hive_2.10
 }
 
 jar {
   baseName = 'be_scan_spark_sql'
   version =  version
+  zip64 = true
   dependsOn configurations.runtime
   from {
     (configurations.runtime - configurations.provided).collect {
@@ -38,15 +39,16 @@ configurations {
     compile.extendsFrom provided
 }
 
+compileJava {
+    options.compilerArgs << "-Xlint:deprecation"
+}
+
 dependencies {
   compile files("../../../local/share/be_scan_jni.jar")
 //  compile files("../../local/share/be_scan_jni.jar")
 
-  // Spark
-  provided "org.apache.spark:spark-core_2.11:${sparkVersion}"
-
-  // SQL
-  provided "org.apache.spark:spark-hive_2.10:${hiveVersion}"
+  compile("org.apache.spark:spark-core_2.10:${sparkVersion}")
+  compile("org.apache.spark:spark-hive_2.10:${sparkVersion}")
 }
 
 task run3(overwrite: true, type: Exec, dependsOn: [assemble]) {

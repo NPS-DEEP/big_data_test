@@ -1,5 +1,7 @@
 package edu.nps.deep.be_scan_spark_sql;
 
+import java.io.Serializable;
+
 import edu.nps.deep.be_scan.Artifact;
 
 /**
@@ -17,7 +19,7 @@ public final class SerializableArtifact implements Serializable {
     streamName = artifact.getStreamName();
     recursionPrefix = artifact.getRecursionPrefix();
     offset = artifact.getOffset();
-    artifact = artifact.getArtifact();
+    this.artifact = artifact.javaArtifact();
   }
 
   public String getArtifactClass() { return artifactClass; }
@@ -30,5 +32,10 @@ public final class SerializableArtifact implements Serializable {
   public void setOffset(long o) { offset = o; }
   public byte[] getArtifact() { return artifact; }
   public void setArtifact(byte[] a) { artifact = a; }
+
+  public String toString() {
+    return (getArtifactClass() + "," + getStreamName() + "," + getRecursionPrefix() + "," +
+            getOffset() + new String(getArtifact()));
+  }
 }
 

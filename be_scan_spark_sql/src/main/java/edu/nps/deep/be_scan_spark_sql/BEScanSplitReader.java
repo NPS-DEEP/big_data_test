@@ -24,9 +24,6 @@ import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.SparkFiles;
 import scala.Tuple2;
 
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.util.Bytes;
-
 import edu.nps.deep.be_scan.Artifact;
 
 /**
@@ -34,7 +31,7 @@ import edu.nps.deep.be_scan.Artifact;
  */
 public final class BEScanSplitReader
                          extends org.apache.hadoop.mapreduce.RecordReader<
-                         Long, Put> {
+                         Long, SerializableArtifact> {
 
   // static scan engine and scanner
   private static final edu.nps.deep.be_scan.ScanEngine scanEngine;
@@ -136,7 +133,7 @@ public final class BEScanSplitReader
   @Override
   public SerializableArtifact getCurrentValue()
                               throws IOException, InterruptedException {
-            
+System.out.println("getCurrentValue: " + serializableArtifact.toString());
     return serializableArtifact;
   }
 
