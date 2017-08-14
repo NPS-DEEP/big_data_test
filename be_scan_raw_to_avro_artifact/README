@@ -1,0 +1,1 @@
+Scan splits using lightgrep, read raw, write found artifacts to Avro
