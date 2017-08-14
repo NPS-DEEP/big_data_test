@@ -6,8 +6,9 @@ group = 'NPS_DEEP'
 version = '0.0.0'
 
 project.ext {
-  sparkVersion = '2.0.2'
+  sparkVersion = '2.2.0'
   // https://mvnrepository.com/artifact/org.apache.spark/spark-hive_2.10
+  // https://mvnrepository.com/artifact/org.apache.spark/spark-hive_2.11
 }
 
 jar {
@@ -26,8 +27,8 @@ jar {
   }
 }
 
-sourceCompatibility = 1.7
-targetCompatibility = 1.7
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
 repositories {
     mavenLocal()

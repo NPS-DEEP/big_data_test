@@ -164,7 +164,7 @@ JavaRDD javaRDD = pairRDD.values();
 System.out.println("BEScanSparkSQL checkpoint.a");
 //      dataFrame.write().save("my_sql_artifacts_file2");
 System.out.println("BEScanSparkSQL checkpoint.b");
-      dataFrame.write().saveAsTable("my_sql_artifacts_table5");
+      dataFrame.write().saveAsTable("my_sql_artifacts_tablea");
 System.out.println("BEScanSparkSQL checkpoint.c");
 
       // show the total bytes processed
