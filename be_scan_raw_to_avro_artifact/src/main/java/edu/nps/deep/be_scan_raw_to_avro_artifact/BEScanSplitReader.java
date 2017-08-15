@@ -14,6 +14,11 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.io.NullWritable;
+
+//import org.apache.avro.mapred.AvroKey;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericData;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -31,7 +36,7 @@ import edu.nps.deep.be_scan.Artifact;
  */
 public final class BEScanSplitReader
                          extends org.apache.hadoop.mapreduce.RecordReader<
-                         Long, SerializableArtifact> {
+                         AvroKeyHack, NullWritable> {
 
   // static scan engine and scanner
   private static final edu.nps.deep.be_scan.ScanEngine scanEngine;
@@ -52,7 +57,10 @@ public final class BEScanSplitReader
   private String filename;
   private BufferReader reader;
   byte[] previous_buffer = null;
-  private SerializableArtifact serializableArtifact = null;
+  private Artifact artifact = new Artifact(); // global for object reuse
+  private GenericRecord avroArtifact = new GenericData.Record(
+                                AvroArtifactSchema.avroArtifactSchema);
+  private AvroKeyHack avroKey = null;
 
   @Override
   public void initialize(InputSplit split, TaskAttemptContext context)
@@ -115,26 +123,35 @@ public final class BEScanSplitReader
     scanAsNeeded();
     if (scanner.empty()) {
       // no more artifacts
-      serializableArtifact = null;
+      avroArtifact = null;
       return false;
     } else {
+
+      // get next artifact
+      artifact = scanner.get();
+
       // stage next artifact
-      SerializableArtifact serializableArtifact = new
-                               SerializableArtifact(scanner.get());
+      avroArtifact.put("artifact_class", artifact.getArtifactClass());
+      avroArtifact.put("stream_name", artifact.getStreamName());
+      avroArtifact.put("recursion_prefix", artifact.getRecursionPrefix());
+      avroArtifact.put("offset", artifact.getOffset());
+      avroArtifact.put("artifact", artifact.javaArtifact());
+      avroKey = new AvroKeyHack(avroArtifact);
+
       return true;
     }
   }
 
   @Override
-  public Long getCurrentKey() throws IOException, InterruptedException {
-    return new Long(1);
+  public AvroKeyHack getCurrentKey()
+                              throws IOException, InterruptedException {
+    return avroKey;
   }
 
   @Override
-  public SerializableArtifact getCurrentValue()
+  public NullWritable  getCurrentValue()
                               throws IOException, InterruptedException {
-System.out.println("getCurrentValue: " + serializableArtifact.toString());
-    return serializableArtifact;
+    return NullWritable.get();
   }
 
   @Override

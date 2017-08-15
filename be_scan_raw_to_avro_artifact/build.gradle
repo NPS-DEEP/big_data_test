@@ -40,6 +40,7 @@ configurations {
 
 compileJava {
     options.compilerArgs << "-Xlint:deprecation"
+    options.compilerArgs << "-Xlint:unchecked"
 }
 
 dependencies {
@@ -56,11 +57,11 @@ dependencies {
 
 task run3(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'
-  args = ["--class","edu.nps.deep.be_scan_raw_to_avro_artifact.BEScanSparkSQL", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_scan_raw_to_avro_artifact/build/libs/be_scan_raw_to_avro_artifact-${version}.jar", "/home/bdallen/work/local/lib", "/user/tjandrze/DEEP/input"]
+  args = ["--class","edu.nps.deep.be_scan_raw_to_avro_artifact.BEScanSparkRawToAvroArtifact", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_scan_raw_to_avro_artifact/build/libs/be_scan_raw_to_avro_artifact-${version}.jar", "/home/bdallen/work/local/lib", "/user/tjandrze/DEEP/input"]
 }
 
 task run4(overwrite: true, type: Exec, dependsOn: [assemble]) {
   executable = 'spark-submit'
-  args = ["--class","edu.nps.deep.be_scan_raw_to_avro_artifact.BEScanSparkSQL", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_scan_raw_to_avro_artifact/build/libs/be_scan_raw_to_avro_artifact-${version}.jar", "/home/bdallen/work/local/lib", "/user/bdallen/images"]
+  args = ["--class","edu.nps.deep.be_scan_raw_to_avro_artifact.BEScanSparkRawToAvroArtifact", "--master", "yarn", "--driver-memory", "7g", "--files", "/home/bdallen/log4j.properties", "/home/bdallen/work/gits/big_data_test/be_scan_raw_to_avro_artifact/build/libs/be_scan_raw_to_avro_artifact-${version}.jar", "/home/bdallen/work/local/lib", "/user/bdallen/images"]
 }
 

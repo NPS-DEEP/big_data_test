@@ -2,7 +2,6 @@ package edu.nps.deep.be_scan_raw_to_avro_artifact;
 
 import java.io.IOException;
 //import java.io.File;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.Date;
@@ -17,6 +16,10 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.NullWritable;
+
+//import org.apache.avro.mapred.AvroKey;
+//import org.apache.avro.generic.GenericRecord;
 
 import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.SparkConf;
@@ -37,11 +40,12 @@ public final class BEScanSparkRawToAvroArtifact {
   // ************************************************************
   public static class BEScanRawFileInputFormat
         extends org.apache.hadoop.mapreduce.lib.input.FileInputFormat<
-                         Long, SerializableArtifact> {
+                         AvroKeyHack, NullWritable> {
 
     // createRecordReader returns EmailReader
     @Override
-    public org.apache.hadoop.mapreduce.RecordReader<Long, SerializableArtifact>
+    public org.apache.hadoop.mapreduce.RecordReader<AvroKeyHack,
+                                                    NullWritable>
            createRecordReader(
                  org.apache.hadoop.mapreduce.InputSplit split,
                  org.apache.hadoop.mapreduce.TaskAttemptContext context)
@@ -53,6 +57,7 @@ public final class BEScanSparkRawToAvroArtifact {
     }
   }
 
+/*
   // ************************************************************
   // Avro Artifact Schema
   // ************************************************************
@@ -71,7 +76,8 @@ public final class BEScanSparkRawToAvroArtifact {
     "}";
 
   private static final org.apache.avro.Schema avroArtifactSchema = new
-     org.apache.avro.Schema.Parser().parse(imageSchemaString);
+     org.apache.avro.Schema.Parser().parse(avroArtifactSchemaString);
+*/
 
   // ************************************************************
   // Main
@@ -118,8 +124,8 @@ public final class BEScanSparkRawToAvroArtifact {
                     "BEScanSparkSQL job");
 
       // set the Avro Artifact schema
-      org.apache.avro.mapreduce.AvroJob.setOutputKeySchema(job,
-                                                     avroArtifactSchema);
+      org.apache.avro.mapreduce.AvroJob.setOutputKeySchema(hadoopJob,
+                                   AvroArtifactSchema.avroArtifactSchema);
 
       // get the hadoop job configuration object
       Configuration configuration = hadoopJob.getConfiguration();
@@ -161,20 +167,20 @@ public final class BEScanSparkRawToAvroArtifact {
       }
 
       // Transformation: create the JavaPairRDD of Avro Put Artifacts
-      JavaPairRDD<Long, SerializableArtifact> pairRDD =
+      JavaPairRDD<AvroKeyHack, NullWritable> pairRDD =
                                             sparkContext.newAPIHadoopRDD(
                configuration,                        // configuration
                BEScanRawFileInputFormat.class,       // F
-               Long.class,                           // K
-               SerializableArtifact.class);          // V
+               AvroKeyHack.class,                        // K
+               NullWritable.class);                  // V
 
 System.out.println("BEScanSparkRawToAvroArtifact checkpoint.a");
       // save the JavaPairRDD Artifacts
-      pairRDD.saveAsNewAPIHadoopFile("rdc_avro_artifacts1",
-                                     AvroKey.class,
-                                     NullWritable.class,
-                                     AvroKeyOutputFormat.class,
-                                     configuration);
+      pairRDD.saveAsNewAPIHadoopFile("rdc_avro_artifacts8",
+                     AvroKeyHack.class,
+                     NullWritable.class,
+                     org.apache.avro.mapreduce.AvroKeyOutputFormat.class,
+                     configuration);
 
 System.out.println("BEScanSparkRawToAvroArtifact checkpoint.b");
 
