@@ -14,6 +14,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.io.NullWritable;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -31,7 +32,7 @@ import edu.nps.deep.be_scan.Artifact;
  */
 public final class BEScanSplitReader
                          extends org.apache.hadoop.mapreduce.RecordReader<
-                         Long, SerializableArtifact> {
+                         SerializableArtifact, NullWritable> {
 
   // static scan engine and scanner
   private static final edu.nps.deep.be_scan.ScanEngine scanEngine;
@@ -126,12 +127,13 @@ public final class BEScanSplitReader
   }
 
   @Override
-  public Long getCurrentKey() throws IOException, InterruptedException {
+  public SerializableArtifact getCurrentKey()
+                               throws IOException, InterruptedException {
     return serializableArtifact;
   }
 
   @Override
-  public SerializableArtifact getCurrentValue()
+  public NullWritable getCurrentValue()
                               throws IOException, InterruptedException {
     return NullWritable.get();
   }

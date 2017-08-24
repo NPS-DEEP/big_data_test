@@ -50,7 +50,13 @@ public final class BufferReader {
       return;
     }
     if (in != null) {
-      in.close();
+      try {
+        in.close();
+      } catch (Exception e) {
+        System.out.println("Error in BufferReader closeInputStream file " +
+                           filename + ", splitStart " + splitStart);
+        closeInputStream();
+      }
       in = null;
       inIsOpen = false;
     }
@@ -119,7 +125,7 @@ public final class BufferReader {
     }
 
     if (!inIsOpen) {
-      return new BufferRecord("".getBytes());
+      return new BufferRecord(0, "".getBytes());
     }
 
     // get number of bytes to read

@@ -48,8 +48,8 @@ dependencies {
   compile files("../../../local/share/be_scan_jni.jar")
 //  compile files("../../local/share/be_scan_jni.jar")
 
-  compile("org.apache.spark:spark-core_2.10:${sparkVersion}")
-  compile("org.apache.spark:spark-hive_2.10:${sparkVersion}")
+  compile("org.apache.spark:spark-core_2.11:${sparkVersion}")
+  compile("org.apache.spark:spark-hive_2.11:${sparkVersion}")
 }
 
 task run3(overwrite: true, type: Exec, dependsOn: [assemble]) {

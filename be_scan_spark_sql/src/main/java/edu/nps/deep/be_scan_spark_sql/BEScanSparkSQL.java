@@ -16,6 +16,7 @@ import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.NullWritable;
 
 import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.SparkConf;
@@ -26,11 +27,10 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.VoidFunction;
+import org.apache.spark.sql.SparkSession;
+
 import scala.Tuple2;
 
-//import org.apache.spark.sql.hive.api.java.JavaSQLContext;
-import org.apache.spark.sql.hive.HiveContext;
-//import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.Dataset;
 
 public final class BEScanSparkSQL {
@@ -41,7 +41,7 @@ public final class BEScanSparkSQL {
   // ************************************************************
   public static class BEScanRawFileInputFormat
         extends org.apache.hadoop.mapreduce.lib.input.FileInputFormat<
-                         SerializableArtifact, NulWritable> {
+                         SerializableArtifact, NullWritable> {
 
     // createRecordReader returns EmailReader
     @Override
@@ -167,9 +167,9 @@ public final class BEScanSparkSQL {
 
       // save dataframe to SQL file
 System.out.println("BEScanSparkSQL checkpoint.a");
-      dataFrame.write().save("my_sql_artifacts_file3");
+      dataset.write().save("my_sql_artifacts_file3");
 System.out.println("BEScanSparkSQL checkpoint.b");
-//      dataFrame.write().saveAsTable("my_sql_artifacts_tablea");
+//      dataset.write().saveAsTable("my_sql_artifacts_tablea");
 //System.out.println("BEScanSparkSQL checkpoint.c");
 
       // show the total bytes processed
