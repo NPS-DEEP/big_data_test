@@ -41,11 +41,11 @@ public final class BEScanSparkSQL {
   // ************************************************************
   public static class BEScanRawFileInputFormat
         extends org.apache.hadoop.mapreduce.lib.input.FileInputFormat<
-                         Long, SerializableArtifact> {
+                         SerializableArtifact, NulWritable> {
 
     // createRecordReader returns EmailReader
     @Override
-    public org.apache.hadoop.mapreduce.RecordReader<Long, SerializableArtifact>
+    public org.apache.hadoop.mapreduce.RecordReader<SerializableArtifact, NullWritable>
            createRecordReader(
                  org.apache.hadoop.mapreduce.InputSplit split,
                  org.apache.hadoop.mapreduce.TaskAttemptContext context)
@@ -64,7 +64,7 @@ public final class BEScanSparkSQL {
   public static void main(String[] args) {
 
     if (args.length != 2) {
-      System.err.println("Usage: BEScanSpark2 <directory holding .so files> <input path>");
+      System.err.println("Usage: BEScanSparkSQL <directory holding .so files> <input path>");
       System.exit(1);
     }
 
@@ -98,8 +98,12 @@ public final class BEScanSparkSQL {
     sparkContext.addFile(args[0] + "/" + "libbe_scan.so");
     sparkContext.addFile(args[0] + "/" + "libbe_scan_jni.so");
 
-    // set up Hive context for SQL
-    HiveContext hiveContext = new HiveContext(sparkContext);
+    // set up the Spark Session, it will be used later
+    // https://spark.apache.org/docs/2.0.1/api/java/org/apache/spark/sql/SparkSession.html
+    // https://jaceklaskowski.gitbooks.io/mastering-apache-spark/spark-sql-SparkSession.html
+    SparkSession sparkSession = SparkSession.builder()
+                                .config(sparkConfiguration)
+                                .getOrCreate();
 
     try {
 
@@ -146,26 +150,27 @@ public final class BEScanSparkSQL {
 //        }
       }
 
-      // Transformation: create the pairRDD for all the files and splits
-      JavaPairRDD<Long, SerializableArtifact> pairRDD =
+      // Transformation: create the JavaPairRDD for all the files and splits
+      JavaPairRDD<SerializableArtifact, NullWritable> pairRDD =
                                             sparkContext.newAPIHadoopRDD(
                configuration,                        // configuration
                BEScanRawFileInputFormat.class,       // F
-               Long.class,                           // K
-               SerializableArtifact.class);          // V
+               SerializableArtifact.class,           // K
+               NullWritable.class);                  // V
 
-JavaRDD javaRDD = pairRDD.values();
+      // reduce it to JavaRDD
+      JavaRDD javaRDD = pairRDD.keys();
 
-      // convert javaPairRDD to Dataset
-      Dataset dataFrame = hiveContext.createDataFrame(
-                            javaRDD, SerializableArtifact.class);
+      // create Dataset using sparkSession
+      Dataset dataset = sparkSession.createDataFrame(javaRDD,
+                                              SerializableArtifact.class);
 
-      // save SQL dataframe to file
+      // save dataframe to SQL file
 System.out.println("BEScanSparkSQL checkpoint.a");
-//      dataFrame.write().save("my_sql_artifacts_file2");
+      dataFrame.write().save("my_sql_artifacts_file3");
 System.out.println("BEScanSparkSQL checkpoint.b");
-      dataFrame.write().saveAsTable("my_sql_artifacts_tablea");
-System.out.println("BEScanSparkSQL checkpoint.c");
+//      dataFrame.write().saveAsTable("my_sql_artifacts_tablea");
+//System.out.println("BEScanSparkSQL checkpoint.c");
 
       // show the total bytes processed
       System.out.println("total bytes processed: " + totalBytes);

@@ -42,6 +42,19 @@ public final class BufferReader {
   private final long splitStart; // offset from start of file
   private final long splitSize;
   private int innerSplitOffset; // offset into split
+  private boolean inIsOpen = false;
+
+  // close if open
+  private void closeInputStream() {
+    if (!inIsOpen) {
+      return;
+    }
+    if (in != null) {
+      in.close();
+      in = null;
+      inIsOpen = false;
+    }
+  }
 
   public BufferReader(InputSplit inputSplit,
                       TaskAttemptContext taskAttemptContext)
@@ -68,19 +81,31 @@ public final class BufferReader {
     // splitSize
     splitSize = ((FileSplit)inputSplit).getLength();
 
-    // open the HDFS binary file
-    in = fileSystem.open(path);
+    try {
+      // open the HDFS binary file
+      in = fileSystem.open(path);
 
-    // move to split
-    in.seek(splitStart);
-    innerSplitOffset = 0;
+      // move to split
+      in.seek(splitStart);
+      innerSplitOffset = 0;
+      inIsOpen = true;
+    } catch (Exception e) {
+      System.out.println("Error in BufferReader initialization file " +
+                         filename + ", splitStart " + splitStart);
+      closeInputStream();
+    }
   }
 
   // more if not EOF and not past split
   public boolean hasNext() throws IOException {
+    if (!inIsOpen) {
+      return false;
+    }
+
     // done when at end of split or EOF
     if (innerSplitOffset >= splitSize ||
                   splitStart + innerSplitOffset == fileSize) {
+      closeInputStream();
       return false;
     } else {
       return true;
@@ -90,7 +115,11 @@ public final class BufferReader {
   // read next.  Error if request to start after end of split.
   public BufferRecord next() throws IOException {
     if (!hasNext()) {
-      throw new IOException("Error in SplitReader.next: next not available");
+      throw new IOException("Error in BufferReader.next: usage error: next not available");
+    }
+
+    if (!inIsOpen) {
+      return new BufferRecord("".getBytes());
     }
 
     // get number of bytes to read
@@ -102,8 +131,14 @@ public final class BufferReader {
       count = (int)(splitSize - innerSplitOffset);
     }
 
-    // read the buffer from the split
-    org.apache.hadoop.io.IOUtils.readFully(in, buffer, 0, count);
+    try {
+      // read the buffer from the split
+      org.apache.hadoop.io.IOUtils.readFully(in, buffer, 0, count);
+    } catch (Exception e) {
+      System.out.println("Error in BufferReader.next " +
+                         filename + ", splitStart " + splitStart);
+      closeInputStream();
+    }
 
     // compose BufferRecord
     BufferRecord bufferRecord = new BufferRecord(

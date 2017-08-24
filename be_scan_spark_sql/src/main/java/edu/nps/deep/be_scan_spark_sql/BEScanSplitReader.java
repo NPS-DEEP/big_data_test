@@ -127,14 +127,13 @@ public final class BEScanSplitReader
 
   @Override
   public Long getCurrentKey() throws IOException, InterruptedException {
-    return new Long(1);
+    return serializableArtifact;
   }
 
   @Override
   public SerializableArtifact getCurrentValue()
                               throws IOException, InterruptedException {
-System.out.println("getCurrentValue: " + serializableArtifact.toString());
-    return serializableArtifact;
+    return NullWritable.get();
   }
 
   @Override
